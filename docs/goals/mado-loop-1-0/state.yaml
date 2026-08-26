@@ -21,7 +21,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T040
+active_task: T910
 
 tasks:
   - id: T003
@@ -1469,7 +1469,7 @@ tasks:
   - id: T040
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Run complete local release acceptance, clean generated junk, inspect the final diff, and create coherent local commits without pushing."
     inputs:
@@ -1482,12 +1482,151 @@ tasks:
       - "Windows install/package evidence"
       - "Clean diff and secret scan"
       - "Commit plan"
-    receipt: null
+    receipt:
+      result: done
+      commands:
+        - cmd: "MADO_GODOT_BIN=Godot 4.7.2 console; python -B tests/run_tests.py"
+          status: pass
+          summary: "19/19 live P0-P5 tests passed with zero skips: P0/P1 4, P2/P3 5, P4 4, P5 6."
+        - cmd: "python -B -m unittest discover -s tests/unit; discover -s tests/routing"
+          status: pass
+          summary: "68 unit and 12 routing tests passed."
+        - cmd: "python -B -m unittest tests.integration.test_package; two independent package builds"
+          status: pass
+          summary: "9/9 package tests passed; two 107-member ZIPs were byte-identical at SHA-256 92d026d6dcaa5a0d99e2e36e984d53facc51af1824699712ce09e8748e38f192."
+        - cmd: "python -B -m unittest tests.integration.install.test_install -v"
+          status: pass
+          summary: "14/14 install/rollback/uninstall tests passed across Windows PowerShell 5.1 and pwsh 7.6.3 in 146.145s."
+        - cmd: "Both vendor manifest checks; tracked secret scan; generated-artifact scan; git diff/status"
+          status: pass
+          summary: "Both immutable vendors passed, 170 tracked files matched no secret signatures, no generated junk remained, and HEAD/origin/main both equal 524277880879c7aa0b47c71d0f4c913e831fd792."
+      summary: "Complete local release acceptance is green and clean, but hosted GitHub Actions run #2 is red; local PASS is not overall 1.0 completion."
+      unknowns:
+        - "Hosted Windows/Linux CI recovery and successful package artifact publication remain mandatory."
+
+  - id: T062
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T040 local acceptance together with hosted CI run #2 failures and authorize an exact cross-platform recovery task."
+    inputs:
+      - "T040 fresh local receipt"
+      - "Owner-provided GitHub Actions run #2 failure evidence"
+      - "Luna read-only recovery findings"
+      - ".github/workflows/ci.yml, Git EOL metadata, vendor manifests, and official Godot ZIP layout"
+    constraints:
+      - "Read-only."
+      - "Do not call MADO LOOP 1.0 complete while hosted CI or artifact publication is red/unobserved."
+      - "Prefer one bounded recovery only if Windows console capture, Ubuntu ffmpeg installation, and byte-exact vendor checkout can be verified together."
+    expected_output:
+      - "accepted local receipt | rejected local receipt"
+      - "Exact hosted CI recovery Worker with allowed_files, verify, and stop_if"
+      - "Evidence required before final acceptance"
+    receipt:
+      result: accepted_with_recovery
+      decision: "Accept T040 local acceptance, but require T063 hosted CI recovery and exact-commit artifact evidence before final 1.0 acceptance."
+      summary: "T040 local acceptance is accepted. Overall 1.0 completion remains blocked until the exact pushed recovery commit is green in hosted Windows/Linux CI and its published package artifact passes an independent audit."
+      evidence:
+        - "Windows must use Godot_v4.7.2-stable_win64_console.exe in both Godot matrices and reject nonzero, empty, or wrong-prefix version output."
+        - "Both Ubuntu matrix jobs must install ffmpeg with apt and both operating systems must verify ffmpeg plus ffprobe."
+        - "The Git index currently contains LF vendor blobs while the immutable manifests describe the unchanged CRLF snapshots; attributes plus one exact LF-to-CRLF index materialization are required."
+      next_allowed_task: T063
+
+  - id: T063
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Repair all three hosted CI environment boundaries while preserving the vendor bytes declared by the immutable manifests."
+    allowed_files:
+      - ".github/workflows/ci.yml"
+      - ".gitattributes"
+      - ".agents/skills/mado-loop/vendor/**"
+    constraints:
+      - "Vendor scope is a one-time EOL materialization in the Git index only; do not edit semantic content, provenance, manifests, tests, or expected hashes."
+      - "Apply the Windows console executable and robust version capture identically in godot-integration and proof-tests."
+      - "Install ffmpeg through Ubuntu apt in both Linux matrix jobs, then require ffmpeg and ffprobe on both operating systems."
+      - "Do not add skip, continue-on-error, or nonfatal verification behavior."
+      - "Do not commit or push."
+    expected_output:
+      - "Workflow YAML parses and both matrices contain the required bootstrap and verification logic."
+      - "Root attributes force LF generally and disable text conversion for the entire vendor payload."
+      - "Every vendor blob changed from HEAD is proven to be exactly LF-to-CRLF and every staged manifest member matches its declared SHA-256."
+      - "Both vendor checks, focused vendor/sprite tests, full unit 68/68, package 9/9, and two byte-identical package builds pass."
+      - "git diff --check passes and all changes are limited to allowed_files."
+    verify:
+      - "Parse the workflow YAML and inspect both Godot matrices for the Windows console executable, robust version capture, Ubuntu ffmpeg installation, and mandatory ffmpeg plus ffprobe checks."
+      - "Use git check-attr text eol to prove vendor text conversion is disabled."
+      - "Audit every staged vendor manifest member SHA-256 and prove every staged vendor blob changed from HEAD is exactly LF-to-CRLF."
+      - "Run both vendor manifest checks, focused vendor/sprite tests, full unit 68/68, package 9/9, and two byte-identical package builds."
+      - "Run git diff --check and confirm the diff is limited to allowed_files."
+    stop_if:
+      - "Any vendor change is not an exact LF-to-CRLF transformation."
+      - "A manifest or expected hash would need editing."
+      - "Any file outside allowed_files is required."
+      - "Godot, ffmpeg, ffprobe, or version verification would become nonfatal."
+      - "The same verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - ".github/workflows/ci.yml"
+        - ".gitattributes"
+        - "72 vendor blobs materialized in the Git index without working-tree edits"
+      commands:
+        - cmd: "Workflow YAML and duplicated matrix contract audit"
+          status: pass
+          summary: "Both matrices use the Windows console binary, fatal robust version capture, Ubuntu apt ffmpeg installation, and mandatory ffmpeg plus ffprobe checks."
+        - cmd: "git check-attr plus staged vendor byte and manifest audit"
+          status: pass
+          summary: "Vendor text/eol are unset; 72/72 changes are exact LF-to-CRLF, staged bytes equal working-tree bytes, and Godot 70 plus sprite-tools 2 manifest entries match."
+        - cmd: "focused vendor/sprite; full unit; package; two independent package builds"
+          status: pass
+          summary: "9/9 focused, 68/68 unit, and 9/9 package passed; both 107-member packages are byte-identical at 92d026d6dcaa5a0d99e2e36e984d53facc51af1824699712ce09e8748e38f192."
+        - cmd: "git diff --cached --check"
+          status: expected_fail
+          summary: "Reports only CRLF and pre-existing trailing whitespace inside immutable vendor bytes; non-vendor diff check passes."
+      summary: "All three hosted CI boundary fixes are staged within scope; manifests, expected hashes, tests, and vendor working-tree bytes are unchanged."
+
+  - id: T064
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T063 staged recovery, including whether the narrowly explained immutable-vendor diff-check exception is acceptable, and authorize or reject commit/push."
+    inputs:
+      - "T062 recovery directive"
+      - "T063 Worker receipt and staged diff"
+      - "Vendor manifests and staged Git blobs"
+      - "Current workflow and attributes"
+    constraints:
+      - "Read-only."
+      - "Reject if any vendor staged change is not exact LF-to-CRLF or does not equal the pre-existing working-tree snapshot declared by its manifest."
+      - "Reject if workflow verification becomes nonfatal, duplicated jobs diverge, or files outside T063 scope are staged."
+      - "Do not call 1.0 complete; hosted exact-commit green and artifact audit remain required."
+    expected_output:
+      - "push_allowed | push_rejected"
+      - "Vendor byte-integrity decision"
+      - "Workflow criterion map"
+      - "Exact post-push evidence requirements"
+      - "next_allowed_task"
+    receipt:
+      result: push_allowed
+      decision: "T063 staged recovery passes T062; the immutable-vendor diff-check exception is narrow, proven, and acceptable."
+      evidence:
+        - "Staged scope is exactly .gitattributes, ci.yml, and 72 vendor blobs; the Goal board remains unstaged."
+        - "Both duplicated matrices satisfy the console Godot, fatal version, Ubuntu ffmpeg install, and mandatory ffmpeg/ffprobe contract with no continue-on-error."
+        - "All 72 vendor blobs are exact HEAD LF-to-CRLF transformations, equal the working tree, and pass Godot 70/70 plus sprite-tools 2/2 manifest verification."
+        - "Focused 9/9, unit 68/68, package 9/9, and two identical 107-member package builds at 92d026d6dcaa5a0d99e2e36e984d53facc51af1824699712ce09e8748e38f192 passed."
+        - "diff-check diagnostics are confined to immutable vendor CRLF/pre-existing whitespace; the non-vendor diff check is clean."
+      residual_risks:
+        - "Hosted Windows/Linux CI and package publication remain unproven."
+      next_allowed_task: T900
 
   - id: T900
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Perform a pre-push criterion audit and authorize or reject push."
     inputs:
@@ -1500,12 +1639,21 @@ tasks:
     expected_output:
       - "push_allowed | push_rejected"
       - "criterion evidence map"
-    receipt: null
+    receipt:
+      result: done
+      decision: push_allowed
+      evidence:
+        - "Goal board checker passes without errors or warnings; T040 complete local acceptance remains sufficient."
+        - "Staged scope is exactly 72 vendor blobs, .gitattributes, and ci.yml; the only unstaged path is this board."
+        - "Independent audit reconfirmed exact LF-to-CRLF vendor transformations, manifest fidelity, matrix parity, fatal dependency checks, focused tests, unit 68/68, and package 9/9."
+      residual_risks:
+        - "Hosted exact-commit Windows/Linux CI and package artifact publication remain unproven."
+      next_allowed_task: T910
 
   - id: T910
     type: pm
     assignee: PM
-    status: queued
+    status: active
     reasoning_hint: high
     objective: "Rerun the full suite and non-force push main only after T900 PASS and remote authentication."
     inputs:
@@ -1541,6 +1689,8 @@ tasks:
 checks:
   dirty_fingerprint: "empty-repository"
   last_verification:
-    result: unknown
-    task: null
-    commands: []
+    result: fail
+    task: T062
+    commands:
+      - "T040 complete local acceptance PASS"
+      - "GitHub Actions run #2 FAIL; hosted recovery T063 required"

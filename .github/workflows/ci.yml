@@ -98,7 +98,7 @@ jobs:
           - os: windows-2025
             archive: Godot_v4.7.2-stable_win64.exe.zip
             sha256: 731980f9608d61333e5baf54a2ef17210acc7a538446c0cb9969f002aca1e953
-            executable: Godot_v4.7.2-stable_win64.exe
+            executable: Godot_v4.7.2-stable_win64_console.exe
           - os: ubuntu-24.04
             archive: Godot_v4.7.2-stable_linux.x86_64.zip
             sha256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
@@ -123,10 +123,21 @@ jobs:
           Expand-Archive -LiteralPath $archive -DestinationPath $install
           $godot = Join-Path $install '${{ matrix.executable }}'
           if (-not $IsWindows) { chmod +x $godot }
-          $version = (& $godot --version).Trim()
+          $versionOutput = @(& $godot --headless --version 2>&1)
+          $versionExitCode = $LASTEXITCODE
+          $version = (($versionOutput | ForEach-Object { $_.ToString() }) -join "`n").Trim()
+          if ($versionExitCode -ne 0) { throw "Godot version probe failed with exit code $versionExitCode`: $version" }
+          if ([string]::IsNullOrWhiteSpace($version)) { throw 'Godot version probe returned empty output' }
           if (-not $version.StartsWith('4.7.2.stable', [StringComparison]::Ordinal)) { throw "Unexpected Godot version: $version" }
           "MADO_GODOT_BIN=$godot" >> $env:GITHUB_ENV
-      - name: Install and require ffmpeg plus ffprobe
+      - name: Install ffmpeg plus ffprobe on Ubuntu
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes ffmpeg
+      - name: Require ffmpeg plus ffprobe
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -147,7 +158,7 @@ jobs:
           - os: windows-2025
             archive: Godot_v4.7.2-stable_win64.exe.zip
             sha256: 731980f9608d61333e5baf54a2ef17210acc7a538446c0cb9969f002aca1e953
-            executable: Godot_v4.7.2-stable_win64.exe
+            executable: Godot_v4.7.2-stable_win64_console.exe
           - os: ubuntu-24.04
             archive: Godot_v4.7.2-stable_linux.x86_64.zip
             sha256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
@@ -171,9 +182,20 @@ jobs:
           Expand-Archive -LiteralPath $archive -DestinationPath $install
           $godot = Join-Path $install '${{ matrix.executable }}'
           if (-not $IsWindows) { chmod +x $godot }
-          $version = (& $godot --version).Trim()
+          $versionOutput = @(& $godot --headless --version 2>&1)
+          $versionExitCode = $LASTEXITCODE
+          $version = (($versionOutput | ForEach-Object { $_.ToString() }) -join "`n").Trim()
+          if ($versionExitCode -ne 0) { throw "Godot version probe failed with exit code $versionExitCode`: $version" }
+          if ([string]::IsNullOrWhiteSpace($version)) { throw 'Godot version probe returned empty output' }
           if (-not $version.StartsWith('4.7.2.stable', [StringComparison]::Ordinal)) { throw "Unexpected Godot version: $version" }
           "MADO_GODOT_BIN=$godot" >> $env:GITHUB_ENV
+      - name: Install ffmpeg plus ffprobe on Ubuntu
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes ffmpeg
       - name: Require ffmpeg and ffprobe (no skip path)
         shell: pwsh
         run: |
