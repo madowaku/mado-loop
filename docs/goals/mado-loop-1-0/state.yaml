@@ -21,7 +21,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T033
+active_task: T034
 
 tasks:
   - id: T003
@@ -1237,7 +1237,7 @@ tasks:
   - id: T033
     type: worker
     assignee: Worker
-    status: active
+    status: done
     objective: "Implement Windows-primary and Linux GitHub Actions for mandatory production gates."
     allowed_files:
       - ".github/workflows/ci.yml"
@@ -1245,12 +1245,110 @@ tasks:
       - "Workflow parses and installs exact Godot 4.7.2 dependencies before mandatory P0-P5/package/install jobs."
     stop_if:
       - "A mandatory gate would be silently skipped or artifacts publish after failure."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - ".github/workflows/ci.yml"
+      commands:
+        - cmd: "PyYAML BaseLoader parse with 10-job dependency and full-SHA action assertions"
+          status: pass
+          summary: "All required jobs exist; publish-package needs every mandatory gate and uses success(); 22 action references use full commit SHAs."
+        - cmd: "First-party Python AST parse"
+          status: pass
+        - cmd: "git diff --check -- .github/workflows/ci.yml"
+          status: pass
+      summary: "Added Windows-primary and Linux CI with exact SHA-verified Godot 4.7.2 binaries, hard ffmpeg/ffprobe preflight, pinned sprite dependencies, mandatory P0-P5/package/install/license gates, pinned Codex Skill validation, and success-only artifact publication."
+      residual_risks:
+        - "Hosted GitHub execution has not yet run; runner image dependency availability remains an intentional hard failure rather than a skip."
+
+  - id: T056
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T033 GitHub Actions for exact dependencies, complete mandatory Windows/Linux gates, skip resistance, and failure-safe artifact publication."
+    inputs:
+      - "T033 receipt and .github/workflows/ci.yml"
+      - "Final CI specification and accepted P0-P5/package/install contracts"
+      - "Independent YAML and dependency-graph assertions"
+    constraints:
+      - "Read-only."
+      - "Reject any missing required gate, dependency-driven green skip, floating action reference, or artifact publication path after mandatory failure."
+      - "Distinguish locally provable workflow wiring from hosted-run evidence reserved for final acceptance."
+    expected_output:
+      - "accepted | rejected"
+      - "Required gate and dependency map"
+      - "Hosted-run residual risks"
+      - "next_allowed_task"
+    receipt:
+      result: rejected
+      decision: "T033 has one remaining dependency-driven green-skip path: the unit vendor snapshot test skips when git is absent."
+      passed:
+        - "All 22 external actions use full commit SHAs; Godot asset names, digests, and version checks are exact."
+        - "Godot, ffmpeg, ffprobe, sprite dependencies, dual PowerShell versions, pinned validator, and success-only publication are correctly wired."
+      failed:
+        - "The unit job lacks a git hard-fail preflight before a test guarded by skipUnless(git)."
+      next_allowed_task: T057
+
+  - id: T057
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Close the final T033 green-skip path by requiring git before the mandatory unit suite."
+    allowed_files:
+      - ".github/workflows/ci.yml"
+    verify:
+      - "The unit job runs git --version before unittest and fails if git is unavailable."
+      - "All prior T033 structural, dependency, and publication assertions remain green."
+    stop_if:
+      - "A file outside .github/workflows/ci.yml must change."
+      - "Any mandatory test can still skip green because a required executable is unchecked."
+    receipt:
+      result: done
+      changed_files:
+        - ".github/workflows/ci.yml"
+      commands:
+        - cmd: "PyYAML structural assertions for git preflight ordering, 10 jobs, complete publish needs, and 22 full-SHA actions"
+          status: pass
+        - cmd: "git diff --check -- .github/workflows/ci.yml docs/goals/mado-loop-1-0/state.yaml"
+          status: pass
+      summary: "Added a hard-fail git --version preflight immediately before mandatory unit discovery, closing the final dependency-driven green-skip path. Worker verifier quoting failed, but PM reran equivalent assertions successfully."
+
+  - id: T058
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Re-audit T033 after T057 git skip-resistance recovery and decide whether the workflow tranche is accepted."
+    inputs:
+      - "T056 rejection"
+      - "T057 change and PM verification receipt"
+      - ".github/workflows/ci.yml"
+    constraints:
+      - "Read-only."
+      - "Reject if any required dependency can still yield a green mandatory skip or artifact publication can bypass a failed gate."
+      - "Hosted-run success remains future evidence and is not required for local workflow acceptance."
+    expected_output:
+      - "accepted | rejected"
+      - "Recovery evidence"
+      - "Residual hosted-run risks"
+      - "next_allowed_task"
+    receipt:
+      result: accepted
+      decision: "The sole T056 green-skip defect is closed; accept the T033 GitHub Actions workflow tranche."
+      evidence:
+        - "git --version hard-fails before the skip-capable unit vendor snapshot test."
+        - "YAML parse, 10 jobs, all nine publish dependencies, success-only upload, 22 full-SHA action references, and diff check pass."
+        - "Exact Godot digests, dependency preflights, dual-shell install, pinned validator, and cross-platform gates remain intact."
+      residual_risks:
+        - "Actual hosted Windows/Linux success remains required for final acceptance."
+        - "Hosted image or external download failures intentionally fail red rather than skip green."
+      next_allowed_task: T034
 
   - id: T034
     type: worker
     assignee: Worker
-    status: queued
+    status: active
     objective: "Complete practical README, changelog, and repository hygiene documentation."
     allowed_files:
       - "README.md"
