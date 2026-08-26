@@ -5,7 +5,7 @@ goal:
   slug: "mado-loop-1-0"
   kind: specific
   tranche: "Build, verify, package, document, commit, and publish the final production-orchestrator specification as version 1.0.0."
-  status: active
+  status: done
 
 rules:
   pm_owns_state: true
@@ -21,7 +21,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T082
+active_task: null
 
 tasks:
   - id: T003
@@ -2280,7 +2280,7 @@ tasks:
   - id: T082
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Commit and non-force push the Judge-approved docs recovery, then require its exact hosted run to be all-green and published artifact SHA-stable."
     inputs:
@@ -2293,12 +2293,27 @@ tasks:
     expected_output:
       - "Exact pushed docs SHA"
       - "Exact hosted all-green and artifact SHA receipt"
-    receipt: null
+    receipt:
+      result: exact_main_green_artifact_sha_stable
+      commands:
+        - cmd: "git commit and git push origin main"
+          status: pass
+          summary: "Committed and non-force pushed documentation recovery as 6ff1b3949d9a2217f2df727381bfaf7282e62619; local HEAD and origin/main match."
+        - cmd: "GitHub Actions run 32968479053"
+          status: pass
+          summary: "Every mandatory Windows/Linux job, both P0-P5 matrices, Windows install contract, package, and publish-package passed on exact 6ff1b39."
+        - cmd: "Published artifact safety, validation, and vendor audit"
+          status: pass
+          summary: "107 ordered unique safe ZIP_STORED members; no repo-only/generated entries; official Skill validation passes; godot-skill 70/70 and sprite-tools 2/2 manifest entries match."
+        - cmd: "Linux CI artifact versus Windows local package byte equality"
+          status: pass
+          summary: "Both archives are 825582 bytes and byte-identical with SHA-256 89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc."
+      summary: "The Judge-approved documentation is on exact clean remote main with all hosted gates green and the published artifact byte-stable."
 
   - id: T083
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Perform final acceptance after the documentation recovery is on clean exact-main with green hosted CI."
     inputs:
@@ -2311,15 +2326,29 @@ tasks:
     expected_output:
       - "complete | not_complete"
       - "Final criterion evidence map"
-    receipt: null
+    receipt:
+      result: complete
+      decision: complete
+      summary: "APPROVE final MADO LOOP 1.0.0 acceptance and authorize PM to finalize and push the board receipt."
+      evidence:
+        - "HEAD and origin/main both equal 6ff1b3949d9a2217f2df727381bfaf7282e62619; only the intended board receipt was dirty."
+        - "GitHub Actions run 32968479053 completed successfully with every mandatory Windows/Linux, P0-P5, package, install, attribution, and publication gate green."
+        - "Published ZIP is 825582 bytes with 107 ordered unique safe ZIP_STORED members and SHA-256 89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc, byte-identical to the Windows local build."
+        - "Official extracted Skill validation and both vendor manifests pass completely."
+        - "README and CHANGELOG claims match the accepted evidence; documented macOS and first-party root-license limitations remain nonblocking under the specification."
+      residual_risks:
+        - "GitHub emits nonblocking Node runtime deprecation annotations for pinned upstream actions."
+        - "macOS remains best-effort without a hosted gate, and the first-party root license owner remains intentionally unselected and documented."
+      blocked_tasks: []
+      next_allowed_task: null
 
 checks:
   dirty_fingerprint: "empty-repository"
   last_verification:
     result: pass
-    task: T079
+    task: T082
     commands:
       - "T040 complete local acceptance PASS"
-      - "GitHub Actions run 32967083386 exact ae7b79f: every mandatory job and publish-package PASS"
+      - "GitHub Actions run 32968479053 exact 6ff1b39: every mandatory job and publish-package PASS"
       - "Published artifact: 107 ordered unique safe ZIP_STORED members, official validation PASS, both vendor manifests PASS"
       - "Linux CI artifact equals Windows local build byte-for-byte: SHA-256 89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc"
