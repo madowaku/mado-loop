@@ -21,7 +21,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T070
+active_task: T073
 
 tasks:
   - id: T003
@@ -1846,7 +1846,7 @@ tasks:
   - id: T070
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Commit and non-force push T068, then monitor the exact hosted run through package publication and independent artifact audit."
     inputs:
@@ -1860,6 +1860,105 @@ tasks:
       - "Exact pushed SHA and hosted run"
       - "All mandatory job results"
       - "Artifact validation and SHA comparison"
+    receipt:
+      result: pushed_ci_failed
+      commands:
+        - cmd: "git push origin main"
+          status: pass
+          summary: "Non-force pushed 0aca3a3bcf38359c4ac55c5c822dd2ecaf9bc4fe."
+        - cmd: "GitHub Actions run 32963273791"
+          status: fail
+          summary: "Both Godot integration jobs, Windows proof P0-P5, unit, sprite, routing, lint, license, and package are green; Linux P4 lacks a display and forced PowerShell reinstall returns MSI 1603."
+      summary: "Cross-platform runtime and vendor recovery is proven; two remaining workflow bootstrap assumptions block publish-package."
+
+  - id: T071
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Provide a Linux virtual display for P4 capture and make exact PowerShell 7.6.3 bootstrap idempotent on the Windows hosted image."
+    allowed_files:
+      - ".github/workflows/ci.yml"
+    constraints:
+      - "Do not modify production P0-P5 code or tests."
+      - "Install xvfb explicitly on the Linux proof matrix and run the unified runner under xvfb-run only on Linux; Windows remains direct."
+      - "Before Chocolatey PowerShell installation, detect and accept an already-installed exact 7.6.3; retain fatal exact-version verification."
+      - "Do not add continue-on-error, skips, sleeps, or unpinned PowerShell requirements."
+      - "Do not commit or push."
+    verify:
+      - "Workflow YAML parses and job conditions are mutually exhaustive."
+      - "Linux proof invocation requires xvfb-run and Windows proof invocation remains direct."
+      - "PowerShell bootstrap is idempotent for existing 7.6.3 and fatal for probe/install errors."
+      - "Local P0-P5 19/19, unit 68/68, package 9/9, and diff check pass."
+      - "Only ci.yml differs beyond the PM board."
+    stop_if:
+      - "Production code or tests need changing."
+      - "Any mandatory gate must be skipped or weakened."
+      - "Any file outside ci.yml is required."
+      - "The same verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - ".github/workflows/ci.yml"
+      commands:
+        - cmd: "YAML, OS-condition, and PowerShell bootstrap audit"
+          status: pass
+          summary: "Linux proof explicitly installs/requires xvfb and runs under xvfb-run; Windows remains direct; exact existing pwsh 7.6.3 bypasses forced reinstall while mismatch remains fatal."
+        - cmd: "Local P0-P5, unit, and package"
+          status: pass
+          summary: "P0-P5 19/19, unit 68/68, and package 9/9 passed."
+        - cmd: "PowerShell probe and diff/scope"
+          status: pass
+          summary: "Current probe returns 7.6.3; diff check passes and only ci.yml plus PM board differ."
+      summary: "Linux P4 now has an explicit virtual display and Windows install avoids the known same-version MSI 1603 path without weakening exact verification."
+
+  - id: T072
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T071 against hosted run 32963273791 and authorize or reject the fourth recovery push."
+    inputs:
+      - "Linux P4 display failure logs"
+      - "Windows PowerShell MSI 1603 logs"
+      - "T071 receipt and workflow diff"
+    constraints:
+      - "Read-only."
+      - "Reject skipped matrices, nonfatal gates, unpinned PowerShell, or production-code changes."
+      - "Do not call 1.0 complete."
+    expected_output:
+      - "push_allowed | push_rejected"
+      - "Failure-to-fix evidence map"
+      - "next_allowed_task"
+    receipt:
+      result: push_allowed
+      decision: "Approve T071 workflow-only recovery push; overall completion remains blocked."
+      evidence:
+        - "Linux installs ffmpeg plus xvfb, requires xvfb-run, and runs mandatory P0-P5 under it; Windows runs the mandatory runner directly."
+        - "Matrix conditions are exhaustive with no continue-on-error or weakened gates."
+        - "PowerShell bootstrap accepts only exact existing 7.6.3, otherwise exact Chocolatey install remains fatal; independent PS5.1/pwsh verification remains."
+        - "YAML, diff, P0-P5 19/19, unit 68/68, package 9/9, PS5.1, and pwsh 7.6.3 checks pass."
+      residual_risks:
+        - "Exact-commit all-green hosted run and published artifact audit remain required."
+      next_allowed_task: T073
+
+  - id: T073
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: high
+    objective: "Commit and non-force push T071, then require exact-commit hosted green and independently audit the published package."
+    inputs:
+      - "T071 Worker receipt"
+      - "T072 push authorization"
+    constraints:
+      - "Commit only ci.yml and Goal board."
+      - "No force push."
+      - "Do not call 1.0 complete before all-green, artifact audit, and final Judge."
+    expected_output:
+      - "Exact pushed SHA and hosted all-green receipt"
+      - "Downloaded artifact 107-safe-member audit"
+      - "Extracted validation, vendor manifests, and local SHA equality"
     receipt: null
 
   - id: T999
@@ -1886,7 +1985,7 @@ checks:
   dirty_fingerprint: "empty-repository"
   last_verification:
     result: fail
-    task: T067
+    task: T070
     commands:
       - "T040 complete local acceptance PASS"
-      - "GitHub Actions run 32962389812 FAIL: Windows ffmpeg absent; Linux fixture cleanup race"
+      - "GitHub Actions run 32963273791 FAIL: Linux P4 display absent; forced PowerShell MSI reinstall 1603"

@@ -208,7 +208,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install --no-install-recommends --yes ffmpeg
+          sudo apt-get install --no-install-recommends --yes ffmpeg xvfb
       - name: Require ffmpeg and ffprobe (no skip path)
         shell: pwsh
         run: |
@@ -223,7 +223,17 @@ jobs:
             $firstLine = (($text -split "`r?`n")[0]).Trim()
             Write-Host "${tool}: $firstLine"
           }
-      - name: Run unified mandatory P0-P5 runner
+      - name: Require xvfb-run on Ubuntu
+        if: runner.os == 'Linux'
+        shell: bash
+        run: command -v xvfb-run
+      - name: Run mandatory P0-P5 runner on Ubuntu display
+        if: runner.os == 'Linux'
+        shell: bash
+        run: xvfb-run -a python -B tests/run_tests.py
+      - name: Run mandatory P0-P5 runner on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: python -B tests/run_tests.py
 
   package:
@@ -267,7 +277,25 @@ jobs:
           python-version: "3.12"
       - name: Install exact PowerShell 7 contract dependency
         shell: powershell
-        run: choco install powershell-core --version=7.6.3 --yes --no-progress --allow-downgrade --force
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installed = ''
+          try {
+            $probe = @(pwsh.exe -NoProfile -Command '$PSVersionTable.PSVersion.ToString()' 2>$null)
+            if ($LASTEXITCODE -eq 0) {
+              $installed = (($probe | ForEach-Object { $_.ToString() }) -join "`n").Trim()
+            }
+          } catch {
+            $installed = ''
+          }
+          if ($installed -eq '7.6.3') {
+            Write-Host 'PowerShell 7.6.3 already installed; skipping Chocolatey reinstall.'
+          } else {
+            & choco install powershell-core --version=7.6.3 --yes --no-progress --allow-downgrade --force
+            if ($LASTEXITCODE -ne 0) {
+              throw "Chocolatey PowerShell 7.6.3 install failed with exit code $LASTEXITCODE"
+            }
+          }
       - name: Require Windows PowerShell 5.1 and PowerShell 7.6.3
         shell: powershell
         run: |
