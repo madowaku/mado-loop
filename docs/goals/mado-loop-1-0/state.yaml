@@ -21,7 +21,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T076
+active_task: T079
 
 tasks:
   - id: T003
@@ -2043,7 +2043,7 @@ tasks:
   - id: T076
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Commit and non-force push the Judge-approved portable PowerShell recovery, require exact-commit hosted all-green, and independently audit the published package."
     inputs:
@@ -2057,6 +2057,113 @@ tasks:
       - "Exact pushed SHA and hosted all-green receipt"
       - "Downloaded artifact 107-safe-member audit"
       - "Extracted validation, vendor manifests, and local SHA equality"
+    receipt:
+      result: pushed_ci_green_artifact_sha_failed
+      commands:
+        - cmd: "git push origin main"
+          status: pass
+          summary: "Non-force pushed dca6045447e6b5c40dd3f3c772b4b1c78331c3ba."
+        - cmd: "GitHub Actions run 32965551555"
+          status: pass
+          summary: "Every mandatory Windows/Linux job and publish-package passed on the exact pushed SHA."
+        - cmd: "Published artifact structural and content audit"
+          status: pass
+          summary: "Downloaded ZIP has 107 unique safe mado-loop/ members, passes official Skill validation, and both vendor manifests recompute exactly."
+        - cmd: "Published artifact versus Windows local package SHA-256"
+          status: fail
+          summary: "Uncompressed entry bytes and normalized metadata match, but 52 DEFLATE streams differ across Linux and Windows zlib implementations: CI 29e2a62fdd0ebc807f310827b54018739f7e1c9465c17afc84df8f0d1df30bf6 versus local 92d026d6dcaa5a0d99e2e36e984d53facc51af1824699712ce09e8748e38f192."
+      summary: "Hosted execution and publication are fully green, but independent audit correctly rejects cross-platform byte reproducibility because ZIP_DEFLATED output is zlib-version dependent."
+
+  - id: T077
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Make package bytes cross-platform deterministic by removing zlib-version-dependent DEFLATE output while preserving the complete install-ready ZIP contract."
+    allowed_files:
+      - "scripts/package.py"
+      - "tests/integration/test_package.py"
+    constraints:
+      - "Use a ZIP method whose emitted bytes are independent of platform compression libraries; keep method explicit and fixed."
+      - "Preserve lexicographic entries, fixed timestamps, permissions, external attributes, POSIX separators, safe paths, atomic output, 107-member payload, and all exclusions."
+      - "Add or update regression evidence for the explicit compression contract."
+      - "Do not change payload, vendor, manifests, expected vendor hashes, workflow gates, or install behavior."
+      - "Do not commit or push."
+    verify:
+      - "Package tests pass and two local builds are byte-identical."
+      - "Extracted package passes official Skill validation."
+      - "Unit, routing, and install contracts remain green."
+      - "Only the two allowed files differ beyond the PM board."
+    stop_if:
+      - "Any payload byte or vendor manifest must change."
+      - "Cross-platform determinism still depends on zlib implementation."
+      - "A safety or validation assertion must be weakened."
+    receipt:
+      result: done
+      changed_files:
+        - "scripts/package.py"
+        - "tests/integration/test_package.py"
+      commands:
+        - cmd: "Two independent ZIP_STORED builds"
+          status: pass
+          summary: "Both archives contain 107 members and have identical SHA-256 89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc."
+        - cmd: "Package and Windows install regression"
+          status: pass
+          summary: "Package 9/9 and install 14/14 passed."
+        - cmd: "Unit and routing regression"
+          status: pass
+          summary: "Unit 68/68 and routing 12/12 passed."
+        - cmd: "Official Skill validation, release audit, diff and scope"
+          status: pass
+          summary: "Validation and release audit 11/11 pass; only the two allowed files plus PM board differ."
+      summary: "Packaging now uses explicit ZIP_STORED with no compression-level or zlib-version dependency while preserving every ordering, metadata, payload, safety, and install contract."
+
+  - id: T078
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T077 against the artifact SHA mismatch and authorize or reject the deterministic packaging recovery push."
+    inputs:
+      - "Run 32965551555 all-green receipt"
+      - "CI/local entry and compressed-stream comparison"
+      - "T077 receipt and diff"
+    constraints:
+      - "Read-only."
+      - "Reject content changes, excluded-file regressions, unsafe entries, or any compression implementation variance."
+      - "Do not call 1.0 complete."
+    expected_output:
+      - "push_allowed | push_rejected"
+      - "Reproducibility evidence map"
+      - "next_allowed_task"
+    receipt:
+      result: push_allowed
+      decision: "Approve T077 deterministic packaging recovery for non-force push; overall completion remains blocked."
+      evidence:
+        - "The prior cross-platform SHA mismatch is isolated to 52 DEFLATE streams while uncompressed bytes and normalized ZIP metadata match."
+        - "ZIP_STORED plus removal of compresslevel eliminates the zlib implementation path."
+        - "Ordering, timestamp, mode, attributes, path safety, duplicate audit, required vendor/license payload, exclusions, atomic output, and validation/install contracts remain unchanged."
+        - "Package 9/9, install 14/14, unit 68/68, routing 12/12, release audit 11/11, two-build SHA equality, diff, and scope checks pass."
+      residual_risks:
+        - "The archive is intentionally larger and cross-OS SHA equality must be proven by the next published artifact."
+      next_allowed_task: T079
+
+  - id: T079
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: high
+    objective: "Commit and non-force push deterministic packaging recovery, require exact hosted all-green, and prove published artifact SHA equality with a Windows local build."
+    inputs:
+      - "T077 Worker receipt"
+      - "T078 push authorization"
+    constraints:
+      - "Commit only package.py, package test, and Goal board."
+      - "No force push."
+      - "Do not call 1.0 complete before artifact equality and final Judge."
+    expected_output:
+      - "Exact pushed SHA and hosted all-green receipt"
+      - "Published artifact structural, validator, vendor, and SHA equality audit"
     receipt: null
 
   - id: T999
@@ -2083,7 +2190,9 @@ checks:
   dirty_fingerprint: "empty-repository"
   last_verification:
     result: fail
-    task: T073
+    task: T076
     commands:
       - "T040 complete local acceptance PASS"
-      - "GitHub Actions run 32964382813: both Windows/Linux P0-P5 PASS; Windows install bootstrap FAIL due PowerShell MSI 1603; publish skipped"
+      - "GitHub Actions run 32965551555 exact dca6045: every mandatory job and publish-package PASS"
+      - "Published artifact: 107 safe members, official validation PASS, both vendor manifests PASS"
+      - "Artifact SHA equality FAIL: Linux CI DEFLATE 29e2a62f... differs from Windows local DEFLATE 92d026d6... despite identical entry bytes and metadata"

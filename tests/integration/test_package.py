@@ -75,7 +75,8 @@ class PackageIntegrationTests(unittest.TestCase):
             self.assertEqual(PACKAGE.FIXED_TIMESTAMP, info.date_time)
             self.assertEqual(3, info.create_system)
             self.assertEqual(PACKAGE.FILE_MODE, info.external_attr >> 16)
-            self.assertEqual(zipfile.ZIP_DEFLATED, info.compress_type)
+            self.assertEqual(zipfile.ZIP_STORED, info.compress_type)
+            self.assertEqual(PACKAGE.COMPRESSION, info.compress_type)
             PACKAGE.audit_member_name(info.filename)
 
     def test_vendor_payloads_and_licenses_are_present(self) -> None:

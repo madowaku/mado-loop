@@ -18,8 +18,12 @@ from typing import Sequence
 ARCHIVE_ROOT = "mado-loop"
 FIXED_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 FILE_MODE = stat.S_IFREG | 0o644
-COMPRESSION = zipfile.ZIP_DEFLATED
-COMPRESSION_LEVEL = 9
+# Store payload bytes without compression.  Deflate output depends on the
+# zlib implementation/version available on the host, which would make the
+# resulting archive SHA-256 differ across Windows and Linux.  ZIP_STORED
+# keeps the archive's data descriptors and payload bytes library-independent
+# while preserving deterministic ordering and metadata below.
+COMPRESSION = zipfile.ZIP_STORED
 FORBIDDEN_PARTS = frozenset(
     {".git", ".github", ".godot", "__pycache__", "dist", "docs", "tests"}
 )
@@ -144,7 +148,6 @@ def build_package(source: Path, output: Path) -> dict[str, object]:
             temporary_path,
             "w",
             compression=COMPRESSION,
-            compresslevel=COMPRESSION_LEVEL,
             strict_timestamps=True,
         ) as archive:
             archive.comment = b""
@@ -153,7 +156,6 @@ def build_package(source: Path, output: Path) -> dict[str, object]:
                     _zip_info(member),
                     payload_path.read_bytes(),
                     compress_type=COMPRESSION,
-                    compresslevel=COMPRESSION_LEVEL,
                 )
         names = audit_archive(temporary_path)
         if names != tuple(sorted(names)):
