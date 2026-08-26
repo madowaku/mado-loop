@@ -1,0 +1,9 @@
+[application]
+config/name="MADO P3 Behavior Fixture"
+run/main_scene="res://main.tscn"
+
+[input]
+activate={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":32)]}
+
+[rendering]
+renderer/rendering_method="gl_compatibility"

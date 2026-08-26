@@ -1,0 +1,1158 @@
+version: 2
+
+goal:
+  title: "MADO LOOP 1.0 Production Build"
+  slug: "mado-loop-1-0"
+  kind: specific
+  tranche: "Build, verify, package, document, commit, and publish the final production-orchestrator specification as version 1.0.0."
+  status: active
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+active_task: T031
+
+tasks:
+  - id: T003
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Audit the final production specification, reconcile it with implemented work, inspect every named external source, and map VENDOR/DISTILL/ROUTE decisions plus missing acceptance tasks."
+    inputs:
+      - "Final Production Specification dated 2026-08-25"
+      - "Current repository and task receipts"
+      - "Named Godot, sprite, UI, playtest, image-to-code, routing, and pixel-art sources"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation or board files."
+      - "Use primary source/license/commit evidence."
+      - "Do not recommend vendoring based on popularity alone."
+    expected_output:
+      - "Specification delta map"
+      - "Per-source VENDOR/DISTILL/ROUTE decision with SHA/license/path evidence"
+      - "Result-contract migration requirements"
+      - "Revised bounded task plan"
+    receipt:
+      result: done
+      summary: "Final spec adds multi-domain routing, creative/sprite/UI/reference/playtest/AI-Creole paths, task_domains+unknowns schema fields, and deterministic sprite fixtures. Keep Godot vendor; narrowly vendor agent-sprite-forge processor candidate; DISTILL UI/playtest/image-to-code/router principles; ROUTE optional ImageGen; reject unverified Pixel Art sources."
+      evidence:
+        - "haxqer/godot-skill@8e0552b158861020d6a9a12059ce11c4ba8cd303 (MIT)"
+        - "0x0funky/agent-sprite-forge@64fd0b57d3f2ae117ef0a95e4c2decc25b4c9dd2 (MIT)"
+        - "nextlevelbuilder/ui-ux-pro-max-skill@9f1824aa7bd87b7a2db8e19afd7fbe40d5f354e5 (MIT)"
+        - "awesome-gamedev-agent-skills@7110607ab816ece9669274bc84937857a8819796 (Apache-2.0)"
+      spawned_tasks:
+        - T004
+
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Approve the revised production architecture, source adoption, schema migration, and bounded execution board for the final specification."
+    inputs:
+      - "T003 receipt"
+      - "Existing T011/T012 implementation receipts"
+      - "Final Production Specification"
+    constraints:
+      - "Read-only."
+      - "Do not drop any mandatory creative, UI, routing, sprite, proof, platform, package, or documentation criterion."
+    expected_output:
+      - "Architecture decision"
+      - "Source adoption decision"
+      - "Exact result-contract recovery task"
+      - "Exact bounded Worker tasks"
+    receipt:
+      result: done
+      decision: "Approve the four-layer ORCHESTRATOR/SPECIALISTS/ENGINE-ASSET-TOOLS/PROOF-SYSTEM architecture. Recover the result contract to schema v1.1 before any producer, keep vendors immutable behind first-party adapters, and exclude only byte-exact Godot payload files from textual whitespace checks."
+      schema_rules: "Canonical concrete domains use enum order; derive MIXED only for two or more concrete domains; nonempty unknowns forces UNKNOWN unless FAIL; required SKIPPED becomes UNKNOWN and optional SKIPPED becomes WARN; precedence is FAIL > UNKNOWN > WARN > PASS."
+      source_decisions: "Keep exact Godot snapshot; narrowly vendor the pinned agent-sprite-forge processor plus MIT license; DISTILL creative/UI/playtest guidance; ROUTE optional ImageGen; do not copy proprietary or unidentified sources."
+      next_allowed_task: T019
+
+  - id: T019
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Recover T011 by migrating the shared result contract and its tests to schema v1.1."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/common/__init__.py"
+      - ".agents/skills/mado-loop/scripts/common/result.py"
+      - "tests/unit/test_result_contract.py"
+    verify:
+      - "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.unit.test_result_contract"
+      - "Tests cover task_domains ordering, deduplication, MIXED invalid forms, unknowns precedence, required/optional SKIPPED, top-level SKIPPED, serialization, and exit codes."
+      - "Python 3.10 syntax compatibility."
+      - "First-party diff check passes while immutable Godot payload is excluded."
+    stop_if:
+      - "An existing producer outside allowed_files requires migration."
+      - "FAIL-over-UNKNOWN precedence cannot be preserved."
+      - "The same verification fails twice for the same unexplained cause."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/common/__init__.py"
+        - ".agents/skills/mado-loop/scripts/common/result.py"
+        - "tests/unit/test_result_contract.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.unit.test_result_contract"
+          status: pass
+          summary: "7 tests passed."
+        - cmd: "git diff --check -- . excluding immutable Godot payload"
+          status: pass
+      summary: "Migrated to schema v1.1 with canonical task domains, derived MIXED, unknowns precedence, required/optional SKIPPED aggregation, top-level SKIPPED validation, deterministic serialization, and documented exit codes."
+
+  - id: T028
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Recover T012 by moving vendor update logic to the repository root and proving the immutable Godot snapshot both offline and against the live pinned source."
+    allowed_files:
+      - ".agents/skills/mado-loop/vendor/godot-skill/**"
+      - ".agents/skills/mado-loop/scripts/update_vendor.py"
+      - "scripts/update_vendor.py"
+      - "THIRD_PARTY_NOTICES.md"
+      - "tests/unit/test_vendor_snapshot.py"
+    verify:
+      - "Offline manifest verifies the exact 69-file payload and MIT LICENSE."
+      - "Live pinned-source comparison byte-matches every vendored file."
+      - "Nested updater is absent and root scripts/update_vendor.py is authoritative."
+      - "First-party diff check excludes only .agents/skills/mado-loop/vendor/godot-skill/payload/**."
+    stop_if:
+      - "Pinned source or license cannot be verified."
+      - "A vendored byte would need modification."
+      - "The same verification fails twice for the same unexplained cause."
+    receipt:
+      result: done
+      changed_files:
+        - "scripts/update_vendor.py"
+        - "tests/unit/test_vendor_snapshot.py"
+      deleted_files:
+        - ".agents/skills/mado-loop/scripts/update_vendor.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.unit.test_vendor_snapshot"
+          status: pass
+          summary: "4 tests passed."
+        - cmd: "python scripts/update_vendor.py --check-live --pin 8e0552b158861020d6a9a12059ce11c4ba8cd303"
+          status: pass
+          summary: "Exact 69-file payload and MIT LICENSE matched the pinned upstream commit."
+        - cmd: "git diff --check -- . excluding only immutable Godot payload"
+          status: pass
+      summary: "Recovered root-level vendor governance with offline manifest and live pinned byte comparison; immutable vendor bytes were unchanged."
+
+  - id: T026
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement deterministic multi-domain task classification using schema v1.1."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/classify_task.py"
+      - "tests/routing/test_classify_task.py"
+    verify:
+      - "Gameplay, UI, sprite, mixed, reference-to-UI, pixel-art, playtest, release, Unicode, ambiguity, and MIXED semantics pass."
+      - "Python 3.10-compatible syntax and first-party diff hygiene pass."
+    stop_if:
+      - "Schema v1.1 must change."
+      - "Classification requires loading specialist content."
+      - "The same verification fails twice for the same unexplained cause."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/classify_task.py"
+        - "tests/routing/test_classify_task.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.routing.test_classify_task"
+          status: pass
+          summary: "6 tests passed."
+        - cmd: "First-party git diff --check"
+          status: pass
+      summary: "Implemented deterministic English/Japanese multi-domain classification, derived MIXED, ambiguity UNKNOWN, stable JSON, and contract-aligned exit codes."
+
+  - id: T027
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Write routing architecture, capability registry, and audited VENDOR/DISTILL/ROUTE policy."
+    allowed_files:
+      - ".agents/skills/mado-loop/references/routing/**"
+    verify:
+      - "Every named source has a decision, full SHA and license where copied, runtime role, dependency behavior, and update policy."
+      - "All internal links resolve and first-party diff hygiene passes."
+    stop_if:
+      - "A copied source lacks verified provenance or license."
+      - "Implementation code outside the routing references is required."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/references/routing/architecture.md"
+        - ".agents/skills/mado-loop/references/routing/capability-registry.md"
+        - ".agents/skills/mado-loop/references/routing/source-policy.md"
+      commands:
+        - cmd: "File, whitespace, relative-link, domain, and pinned-SHA checks"
+          status: pass
+        - cmd: "First-party git diff --check"
+          status: pass
+      summary: "Recorded the four-layer router, progressive disclosure, missing-capability semantics, no-auto-install behavior, and audited VENDOR/DISTILL/ROUTE/REJECT boundaries."
+      remaining_blocker: "SKILL.md linking is intentionally deferred to T013."
+
+  - id: T042
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Vendor the one approved sprite processor and implement its schema-v1.1 subprocess adapter with deterministic fixtures."
+    allowed_files:
+      - ".agents/skills/mado-loop/vendor/sprite-tools/**"
+      - ".agents/skills/mado-loop/scripts/common/sprite_processor.py"
+      - "scripts/update_vendor.py"
+      - "THIRD_PARTY_NOTICES.md"
+      - "tests/fixtures/sprite/**"
+      - "tests/unit/test_sprite_processor.py"
+    verify:
+      - "One upstream Python file and MIT LICENSE byte-match 0x0funky/agent-sprite-forge@64fd0b57d3f2ae117ef0a95e4c2decc25b4c9dd2."
+      - "Split, normalize, shared anchor, shared scale, QC, preview, and Unicode/space paths pass."
+    stop_if:
+      - "Additional upstream runtime files are required."
+      - "A vendor modification is required."
+      - "NumPy or Pillow compatibility cannot be bounded."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/vendor/sprite-tools/**"
+        - ".agents/skills/mado-loop/scripts/common/sprite_processor.py"
+        - "scripts/update_vendor.py"
+        - "THIRD_PARTY_NOTICES.md"
+        - "tests/fixtures/sprite/two-by-two.ppm"
+        - "tests/unit/test_sprite_processor.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.unit.test_sprite_processor tests.unit.test_vendor_snapshot"
+          status: pass
+          summary: "9 tests passed."
+        - cmd: "python scripts/update_vendor.py --check-live --vendor sprite-tools --pin 64fd0b57d3f2ae117ef0a95e4c2decc25b4c9dd2"
+          status: pass
+        - cmd: "First-party git diff --check"
+          status: pass
+      summary: "Vendored one byte-exact processor and MIT license, added dual-vendor governance and schema-v1.1 adapter with deterministic split/normalize/anchor/scale/QC/preview coverage."
+
+  - id: T043
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Distill creative, art-direction, sprite, pixel-art, and asset-integration contracts."
+    allowed_files:
+      - ".agents/skills/mado-loop/references/production/art-direction.md"
+      - ".agents/skills/mado-loop/references/production/sprite-production.md"
+      - ".agents/skills/mado-loop/references/production/pixel-art-profile.md"
+      - ".agents/skills/mado-loop/references/production/asset-integration.md"
+    verify:
+      - "Defines ImageGen routing, coherent action generation, body/FX separation, invariants, integration, and no fixed palette or resolution."
+    stop_if:
+      - "An external Skill would be copied instead of distilled."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/references/production/art-direction.md"
+        - ".agents/skills/mado-loop/references/production/sprite-production.md"
+        - ".agents/skills/mado-loop/references/production/pixel-art-profile.md"
+        - ".agents/skills/mado-loop/references/production/asset-integration.md"
+      commands:
+        - cmd: "Required-content, link, whitespace, and file checks"
+          status: pass
+      summary: "Added executable production contracts for art direction, coherent sprite actions, configurable pixel-art constraints, Godot integration, rollback, proof, and v1.1 outcome semantics."
+
+  - id: T044
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Distill Game UI and reference-to-game-UI workflows for Godot."
+    allowed_files:
+      - ".agents/skills/mado-loop/references/production/game-ui.md"
+      - ".agents/skills/mado-loop/references/production/image-to-game-ui.md"
+    verify:
+      - "Covers Control, Container, Theme, CanvasLayer, input, modal, focus, safe area, localization, anti-patterns, and same-state capture/compare/repair."
+    stop_if:
+      - "DOM or SaaS rules would be applied directly to Godot."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/references/production/game-ui.md"
+        - ".agents/skills/mado-loop/references/production/image-to-game-ui.md"
+      commands:
+        - cmd: "Required-content, schema, link, whitespace, and final-newline checks"
+          status: pass
+      summary: "Added Godot-native UI production and reference reconstruction workflows with semantic controls, responsive/input/modal/accessibility requirements, same-state comparison, tolerances, repair, rollback, and proof semantics."
+
+  - id: T045
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Distill gameplay playtest, AI Creole handoff, and FIELD NOTES policy."
+    allowed_files:
+      - ".agents/skills/mado-loop/references/proof/gameplay-proof.md"
+      - ".agents/skills/mado-loop/references/protocol/ai-creole-handoff.md"
+      - ".agents/skills/mado-loop/references/protocol/field-notes-policy.md"
+    verify:
+      - "Playtest sequence, severity, reproduction, and all Creole fields are covered; the human completion report remains authoritative."
+    stop_if:
+      - "The protocol would store secrets, transient logs, or general Godot knowledge."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/references/proof/gameplay-proof.md"
+        - ".agents/skills/mado-loop/references/protocol/ai-creole-handoff.md"
+        - ".agents/skills/mado-loop/references/protocol/field-notes-policy.md"
+      commands:
+        - cmd: "Schema/reference content audit and first-party whitespace check"
+          status: pass
+      summary: "Added reproducible gameplay/playtest proof, AI Creole handoff with authority boundaries, and durable evidence-backed FIELD NOTES lifecycle."
+
+  - id: T046
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Test routing composition and progressive disclosure."
+    allowed_files:
+      - "tests/routing/test_progressive_disclosure.py"
+    verify:
+      - "Each example route selects only required references and tools; mixed tasks compose; missing optional ImageGen does not break nonvisual routes."
+    stop_if:
+      - "Tests would require installing optional Skills or making network calls."
+    receipt:
+      result: done
+      changed_files:
+        - "tests/routing/test_progressive_disclosure.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.routing.test_progressive_disclosure"
+          status: pass
+          summary: "6 tests passed."
+      summary: "Verified minimal route selection, unrelated-specialist exclusion, MIXED and reference-to-UI composition, optional ImageGen semantics, and no-auto-install/network behavior."
+
+  - id: T047
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement the first-party Godot tool adapter over immutable vendor entry points."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/common/godot_tool.py"
+      - "tests/unit/test_godot_tool.py"
+    verify:
+      - "Validation, runtime, scenario, UI-report, screenshot, and export results map to schema v1.1."
+      - "Unicode and space paths are quoted safely and vendor files remain unchanged."
+    stop_if:
+      - "A vendor patch or unbounded executable search is required."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/common/godot_tool.py"
+        - "tests/unit/test_godot_tool.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.unit.test_godot_tool"
+          status: pass
+          summary: "7 tests passed."
+        - cmd: "python scripts/update_vendor.py --vendor godot-skill --check"
+          status: pass
+        - cmd: "First-party diff check excluding only immutable Godot payload"
+          status: pass
+      summary: "Implemented explicit-path schema-v1.1 adapter for P0 validation, P1 runtime, P2-P4 scenarios/UI/screenshots, and P5 preflight/export/artifact verification."
+      recovery_note: "Initial Worker stopped on sandbox-only vendor read denial; recovery used narrow escalated reads and confirmed immutable vendor remained unchanged."
+
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Map the empty repository, directive, current Codex Skill rules, upstream godot-skill HEAD versus candidate SHA, Godot baseline, verification dependencies, and concrete architecture risks."
+    inputs:
+      - "Production Build Directive"
+      - "https://github.com/haxqer/godot-skill"
+      - "Current Codex Skill Creator validation rules"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Prefer primary-source and exact-path evidence."
+    expected_output:
+      - "Repo and dependency map"
+      - "Pinned upstream recommendation"
+      - "Verification commands and platform risks"
+      - "Candidate implementation slices"
+    receipt:
+      result: done
+      summary: "Repo is unborn; upstream HEAD equals candidate SHA 8e0552b158861020d6a9a12059ce11c4ba8cd303 with zero delta. Pin all 69 payload files plus MIT LICENSE, keep vendor immutable, baseline Godot 4.7.2, and use PYTHONUTF8=1 on Windows validation."
+      evidence:
+        - "https://github.com/haxqer/godot-skill/commit/8e0552b158861020d6a9a12059ce11c4ba8cd303"
+        - "https://github.com/haxqer/godot-skill/actions/runs/32683809461"
+        - "https://godotengine.org/download/archive/4.7.2-stable/"
+      spawned_tasks:
+        - T002
+
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review Scout evidence and approve production architecture, upstream pin, result contract, and bounded implementation slices."
+    inputs:
+      - "T001 receipt"
+      - "Production acceptance criteria"
+    constraints:
+      - "Read-only."
+      - "Do not reduce mandatory P0-P5 scope."
+    expected_output:
+      - "Decision"
+      - "Exact Worker objectives"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+    receipt:
+      result: done
+      decision: "Approve a self-contained layered Skill, stdlib Python 3.10+, Windows PowerShell 5.1+, immutable complete vendor snapshot at 8e0552b158861020d6a9a12059ce11c4ba8cd303, and a shared strict result contract. Do not invent a root license."
+      next_allowed_task: T011
+      blocked_tasks:
+        - T010
+        - T020
+        - T030
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Implement the versioned Skill, common result contract, proof classifier, doctor, proof-sheet generator, release audit, references, and pinned vendor payload."
+    allowed_files:
+      - ".agents/skills/mado-loop/**"
+      - "VERSION"
+      - "THIRD_PARTY_NOTICES.md"
+    verify:
+      - "Skill quick validation passes."
+      - "All Python scripts compile and unit tests for core tools pass."
+      - "Vendored provenance and license match the pinned SHA."
+    stop_if:
+      - "Upstream pin cannot be verified."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unexplained cause."
+    receipt:
+      result: superseded
+      summary: "Split into T011-T017 for bounded ownership and verification."
+
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Implement executable unit/integration fixtures and P0-P5 test orchestration with explicit failure semantics."
+    allowed_files:
+      - "tests/**"
+      - ".agents/skills/mado-loop/scripts/common/**"
+    verify:
+      - "Unit suite passes."
+      - "P0 PASS/FAIL, P1 FAIL, P2 valid/invalid, P3 behavior, P4 proof sheet, and P5 artifact audit execute."
+    stop_if:
+      - "A mandatory proof level would be skipped."
+      - "Need production game code or signing secrets."
+      - "Need files outside allowed_files."
+    receipt:
+      result: superseded
+      summary: "Split into T021-T025 by proof responsibility."
+
+  - id: T030
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Implement transactional Windows install/uninstall, package/update scripts, CI, README, changelog, and repository hygiene."
+    allowed_files:
+      - "scripts/**"
+      - ".github/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - ".gitignore"
+    verify:
+      - "Package builds and validates without repo-only files."
+      - "Clean-room Windows install and uninstall pass."
+      - "CI YAML and documentation checks pass."
+    stop_if:
+      - "Installer would overwrite an unrelated existing skill."
+      - "Need files outside allowed_files."
+    receipt:
+      result: superseded
+      summary: "Split into T031-T034 for package, install, CI, and docs."
+
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement VERSION and the shared deterministic verification result contract with unit tests."
+    allowed_files:
+      - "VERSION"
+      - ".agents/skills/mado-loop/scripts/common/__init__.py"
+      - ".agents/skills/mado-loop/scripts/common/result.py"
+      - "tests/__init__.py"
+      - "tests/unit/__init__.py"
+      - "tests/unit/test_result_contract.py"
+    verify:
+      - "VERSION is exactly 1.0.0."
+      - "python -m unittest tests.unit.test_result_contract"
+      - "Python 3.10 syntax compatibility."
+      - "git diff --check"
+    stop_if:
+      - "Contract requires another production file."
+      - "Python 3.10 cannot parse or run it."
+      - "The same verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - "VERSION"
+        - ".agents/skills/mado-loop/scripts/common/__init__.py"
+        - ".agents/skills/mado-loop/scripts/common/result.py"
+        - "tests/__init__.py"
+        - "tests/unit/__init__.py"
+        - "tests/unit/test_result_contract.py"
+      commands:
+        - cmd: "python -m unittest tests.unit.test_result_contract"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Implemented schema v1.0 result contract, deterministic aggregation, artifact hashing, validation, JSON serialization, and exit mapping; 5 tests pass."
+
+  - id: T012
+    type: worker
+    assignee: Worker
+    status: blocked
+    objective: "Vendor the exact immutable upstream snapshot and provenance tooling."
+    allowed_files:
+      - ".agents/skills/mado-loop/vendor/godot-skill/**"
+      - "THIRD_PARTY_NOTICES.md"
+      - "scripts/update_vendor.py"
+      - "tests/unit/test_vendor_snapshot.py"
+    verify:
+      - "Live SHA matches the pin."
+      - "All 69 payload files and MIT LICENSE byte-match upstream."
+      - "No cache or generated junk exists."
+    stop_if:
+      - "HEAD changed from the reviewed SHA."
+      - "Any payload hash, provenance, or license cannot be verified."
+      - "Vendor modification appears necessary."
+    receipt:
+      result: blocked
+      changed_files:
+        - ".agents/skills/mado-loop/vendor/godot-skill/**"
+        - ".agents/skills/mado-loop/scripts/update_vendor.py"
+        - "THIRD_PARTY_NOTICES.md"
+        - "tests/unit/test_vendor_snapshot.py"
+      commands:
+        - cmd: "offline vendor snapshot tests and byte comparison"
+          status: pass
+        - cmd: "git diff --check equivalent over vendored files"
+          status: fail
+      summary: "All 69 payload files plus LICENSE are byte-exact at the pin and 8 tests pass, but five upstream .gd files contain pre-existing trailing whitespace. Editing would violate immutable vendor policy."
+      remaining_blocker: "Judge must define the diff-check boundary for byte-exact third-party vendor files."
+
+  - id: T018
+    type: judge
+    assignee: Judge
+    status: blocked
+    reasoning_hint: high
+    objective: "Decide how release whitespace checks should handle byte-exact vendored files with upstream trailing whitespace, without weakening first-party hygiene."
+    inputs:
+      - "T012 receipt"
+      - "Immutable vendor policy"
+      - "Pinned manifest and byte comparison"
+    constraints:
+      - "Read-only."
+      - "Do not authorize modifying vendored bytes."
+      - "Do not waive first-party diff hygiene."
+    expected_output:
+      - "Decision"
+      - "Exact verification boundary"
+      - "Whether T012 may be marked done"
+      - "Next task"
+    receipt:
+      result: superseded
+      summary: "Interrupted by the owner's Final Production Specification. Vendor whitespace decision remains unresolved and is folded into T004 architecture review."
+
+  - id: T013
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement the thin explicit-invocation Skill shell and link completed progressive references."
+    allowed_files:
+      - ".agents/skills/mado-loop/SKILL.md"
+      - ".agents/skills/mado-loop/agents/openai.yaml"
+      - ".agents/skills/mado-loop/references/safety/project-safety.md"
+      - ".agents/skills/mado-loop/references/proof/completion-contract.md"
+      - ".agents/skills/mado-loop/references/proof/proof-ladder.md"
+    verify:
+      - "Skill validation passes with UTF-8 mode."
+      - "Implicit invocation is false, every link resolves, and detailed specialist knowledge stays out of SKILL.md."
+    stop_if:
+      - "A referenced specialist file is absent."
+      - "Current Skill metadata rules conflict with the directive."
+      - "Code or vendor edits are needed."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/SKILL.md"
+        - ".agents/skills/mado-loop/agents/openai.yaml"
+        - ".agents/skills/mado-loop/references/safety/project-safety.md"
+        - ".agents/skills/mado-loop/references/proof/completion-contract.md"
+        - ".agents/skills/mado-loop/references/proof/proof-ladder.md"
+      commands:
+        - cmd: "PYTHONUTF8=1 quick_validate.py .agents/skills/mado-loop"
+          status: pass
+          summary: "Skill is valid."
+        - cmd: "Relative Markdown link resolution and first-party whitespace checks"
+          status: pass
+      summary: "Implemented an explicit-invocation-only thin production orchestrator with lifecycle, routing, safety, proof ladder, completion contract, and progressive links."
+
+  - id: T014
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement schema-v1.1 proof classification and deterministic P0-P5 cost-ladder recommendations with unit tests."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/classify_proof.py"
+      - "tests/unit/test_classify_proof.py"
+    verify:
+      - "Positive, negative, ambiguity, ordering, and Unicode path tests pass."
+      - "Python 3.10 syntax passes."
+    stop_if:
+      - "The shared contract must change."
+      - "Another CLI must be edited."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/classify_proof.py"
+        - "tests/unit/test_classify_proof.py"
+      commands:
+        - cmd: "python -B -m unittest tests.unit.test_classify_proof"
+          status: pass
+          summary: "8 tests passed."
+        - cmd: "Python 3.10 compile and first-party whitespace checks"
+          status: pass
+      summary: "Implemented deterministic lowest-sufficient P0-P5 recommendation, prerequisites, ambiguity UNKNOWN, explicit N/A SKIPPED, stable JSON, and CLI exit semantics without claiming proof execution."
+
+  - id: T015
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement mado_doctor.py with bounded Windows-first capability discovery and unit tests."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/mado_doctor.py"
+      - "tests/unit/test_mado_doctor.py"
+    verify:
+      - "JSON/human outputs, explicit/PATH/common Godot discovery, timeout, and Unicode tests pass."
+      - "Detected Godot binary is verified with --version."
+    stop_if:
+      - "The shared contract must change."
+      - "Unbounded disk scanning would be required."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/mado_doctor.py"
+        - "tests/unit/test_mado_doctor.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.unit.test_mado_doctor"
+          status: pass
+          summary: "9 tests passed."
+        - cmd: "First-party whitespace check"
+          status: pass
+      summary: "Added bounded explicit/PATH/common-path Godot discovery with version verification, dependency reporting, optional route declarations, deterministic outputs, and v1.1 UNKNOWN/WARN semantics."
+
+  - id: T016
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement duration-based production proof-sheet generation and unit tests."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/make_proof_sheet.py"
+      - "tests/unit/test_make_proof_sheet.py"
+    verify:
+      - "Duration sampling, timeout, failure, source integrity, dimensions, spaces, and Unicode tests pass."
+    stop_if:
+      - "The shared contract must change."
+      - "ffmpeg would be installed implicitly."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/make_proof_sheet.py"
+        - "tests/unit/test_make_proof_sheet.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.unit.test_make_proof_sheet"
+          status: pass
+          summary: "6 tests passed."
+        - cmd: "First-party whitespace check"
+          status: pass
+      summary: "Implemented deterministic duration sampling, Unicode-safe ffmpeg/ffprobe execution, timeouts, source hashing, atomic output, and schema-v1.1 failure semantics."
+
+  - id: T017
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement strict APK/AAB release auditing with UNKNOWN semantics and unit tests."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/release_audit.py"
+      - "tests/unit/test_release_audit.py"
+    verify:
+      - "PASS/FAIL/WARN/UNKNOWN cases, corrupt ZIP, contents, metadata-tool absence, and Unicode tests pass."
+    stop_if:
+      - "The shared contract must change."
+      - "Signing secrets would be required or exposed."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/release_audit.py"
+        - "tests/unit/test_release_audit.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.unit.test_release_audit"
+          status: pass
+          summary: "11 tests passed."
+        - cmd: "First-party whitespace check"
+          status: pass
+      summary: "Implemented strict APK/AAB structure, integrity, path-safety, signature-presence and bounded metadata verification with deterministic schema-v1.1 PASS/FAIL/UNKNOWN semantics."
+
+  - id: T021
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement and execute P0/P1 PASS and failure fixtures through the T047 Godot adapter."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/common/godot_runner.py"
+      - "tests/fixtures/godot-valid/**"
+      - "tests/fixtures/godot-parse-error/**"
+      - "tests/fixtures/godot-runtime-error/**"
+      - "tests/integration/test_p0_p1.py"
+    verify:
+      - "Godot 4.7.2 P0 pass, parse failure stops before P1, and runtime error is detected."
+    stop_if:
+      - "A mandatory proof would be skipped."
+      - "Production game code or signing secrets are needed."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/common/godot_runner.py"
+        - "tests/fixtures/godot-valid/**"
+        - "tests/fixtures/godot-parse-error/**"
+        - "tests/fixtures/godot-runtime-error/**"
+        - "tests/integration/test_p0_p1.py"
+      commands:
+        - cmd: "MADO_GODOT_BIN=Godot-4.7.2 PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.integration.test_p0_p1"
+          status: pass
+          summary: "4 live-engine tests passed."
+        - cmd: "Vendor snapshot and first-party diff checks"
+          status: pass
+      summary: "Proved valid P0 PASS→P1 PASS, parse P0 FAIL→P1 not invoked, runtime P0 PASS→P1 FAIL, parsed diagnostics, and Unicode/space fixture execution."
+
+  - id: T022
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement and execute P2 valid/broken UI plus P3 deterministic state-transition fixtures through T047 scenarios."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/common/layout_proof.py"
+      - ".agents/skills/mado-loop/scripts/common/behavior_proof.py"
+      - "tests/fixtures/godot-ui-layout/**"
+      - "tests/fixtures/godot-behavior/**"
+      - "tests/integration/test_p2_p3.py"
+    verify:
+      - "Valid and invalid layouts differ and deterministic input changes asserted state."
+    stop_if:
+      - "Production gameplay must be permanently changed."
+      - "A mandatory proof would be skipped."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/common/layout_proof.py"
+        - ".agents/skills/mado-loop/scripts/common/behavior_proof.py"
+        - "tests/fixtures/godot-ui-layout/**"
+        - "tests/fixtures/godot-behavior/**"
+        - "tests/integration/test_p2_p3.py"
+      commands:
+        - cmd: "MADO_GODOT_BIN=Godot-4.7.2 PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.integration.test_p2_p3"
+          status: pass
+          summary: "4 live-engine tests passed."
+        - cmd: "Godot validation for both fixtures"
+          status: pass
+          summary: "UI fixture: 3 files, 2 scenes, 0 diagnostics; behavior fixture: 2 files, 1 scene, 1 script, 0 diagnostics."
+      summary: "Proved responsive themed container-first UI at two viewports, measurable overlap failure, and a deterministic READY-to-ACTIVATED input/state/log transition with stable reruns and Unicode/space paths."
+
+  - id: T023
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement and execute P4 deterministic motion capture orchestration and fixture."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/common/motion_proof.py"
+      - "tests/fixtures/godot-motion/**"
+      - "tests/integration/test_p4.py"
+    verify:
+      - "Deterministic capture and proof sheet are produced with source hash unchanged on Unicode/space paths."
+    stop_if:
+      - "AI visual grading is required."
+      - "Capture cannot be made deterministic."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/common/motion_proof.py"
+        - "tests/fixtures/godot-motion/project.godot"
+        - "tests/fixtures/godot-motion/main.tscn"
+        - "tests/fixtures/godot-motion/motion.gd"
+        - "tests/integration/test_p4.py"
+      commands:
+        - cmd: "MADO_GODOT_BIN=Godot-4.7.2 PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.integration.test_p4"
+          status: pass
+          summary: "4 live-engine media tests passed in 6.685s on independent rerun."
+        - cmd: "Godot validate_project.py tests/fixtures/godot-motion --pretty"
+          status: pass
+          summary: "2 files, 1 scene, 1 script, 0 diagnostics."
+      summary: "Captured an actual Godot Movie Maker AVI at a measured 24 frames/12 FPS, generated a duration-sampled proof sheet, proved stable rerun evidence and source-tree integrity, and passed Unicode/space copied-path execution."
+
+  - id: T024
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement and execute P5 export proof orchestration and test export fixture."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/common/release_proof.py"
+      - "tests/fixtures/godot-export/**"
+      - "tests/integration/test_p5.py"
+    verify:
+      - "Godot 4.7.2 creates a nonzero artifact with expected contents and audit PASS."
+    stop_if:
+      - "A signing secret is required."
+      - "Export template/version mismatch remains unresolved."
+      - "A mandatory check would be SKIPPED."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/common/release_proof.py"
+        - "tests/fixtures/godot-export/project.godot"
+        - "tests/fixtures/godot-export/main.tscn"
+        - "tests/fixtures/godot-export/export_fixture.gd"
+        - "tests/fixtures/godot-export/export_presets.cfg"
+        - "tests/integration/test_p5.py"
+      commands:
+        - cmd: "MADO_GODOT_BIN=Godot-4.7.2 PYTHONUTF8=1 PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.integration.test_p5"
+          status: pass
+          summary: "5 live-engine export/audit tests passed in 16.015s on independent rerun."
+        - cmd: "Godot validate_project.py on the export fixture"
+          status: pass
+          summary: "2 files, 1 scene, 1 script, 0 diagnostics."
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.unit.test_vendor_snapshot"
+          status: pass
+          summary: "4 immutable-vendor tests passed."
+      summary: "Exported a real template-independent Godot ZIP pack, audited CRC/path/member/content integrity and a stable content manifest, preserved fixture source hashes, and passed Unicode/space paths, missing-tool UNKNOWN, and corrupt-artifact FAIL cases."
+
+  - id: T025
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Implement and execute the unified mandatory P0-P5 test runner and aggregation tests."
+    allowed_files:
+      - "tests/run_tests.py"
+      - "tests/unit/test_test_runner.py"
+    verify:
+      - "All P0-P5 are invoked and any mandatory non-PASS makes the runner non-green."
+    stop_if:
+      - "A mandatory proof cannot be invoked."
+      - "Production files outside scope must change."
+    receipt:
+      result: done
+      changed_files:
+        - "tests/run_tests.py"
+        - "tests/unit/test_test_runner.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.unit.test_test_runner"
+          status: pass
+          summary: "5 aggregation tests passed."
+        - cmd: "MADO_GODOT_BIN=Godot-4.7.2 PYTHONUTF8=1 PYTHONDONTWRITEBYTECODE=1 python tests/run_tests.py"
+          status: pass
+          summary: "17 mandatory live-engine tests passed: P0/P1 4, P2/P3 4, P4 4, P5 5."
+      summary: "Added fixed-order P0-P5 execution, complete aggregation, stable JSON, and mandatory non-green handling for failures, errors, skips, expected failures, unexpected successes, zero collection, and load errors."
+      follow_up: "T048 removes a Windows locale-dependent subprocess decode warning observed when PYTHONUTF8 was not forced."
+
+  - id: T048
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Harden the Godot adapter's captured subprocess decoding so Unicode/space P5 evidence is clean on default Windows locales."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/common/godot_tool.py"
+      - "tests/unit/test_godot_tool.py"
+    verify:
+      - "Captured vendor-wrapper output is decoded as UTF-8 with replacement rather than the host locale."
+      - "Godot adapter unit tests pass."
+      - "The unified P0-P5 runner passes without requiring PYTHONUTF8."
+    stop_if:
+      - "A vendor file must change."
+      - "Unicode evidence still raises a reader exception after one focused fix."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/common/godot_tool.py"
+        - "tests/unit/test_godot_tool.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.unit.test_godot_tool"
+          status: pass
+          summary: "8 adapter tests passed."
+        - cmd: "MADO_GODOT_BIN=Godot-4.7.2 python -m unittest tests.integration.test_p5.P5IntegrationTests.test_unicode_space_paths_pass without PYTHONUTF8"
+          status: pass
+          summary: "Unicode/space P5 live test passed without a locale reader exception."
+        - cmd: "MADO_GODOT_BIN=Godot-4.7.2 PYTHONDONTWRITEBYTECODE=1 python tests/run_tests.py without PYTHONUTF8"
+          status: pass
+          summary: "All 17 mandatory P0-P5 tests passed without locale-dependent decode errors."
+      summary: "Made Godot wrapper capture explicitly UTF-8 with replacement, removing Japanese Windows cp932 reader failures while preserving immutable vendor bytes."
+
+  - id: T049
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the completed Godot adapter and P0-P5 executable fixture integration tranche against the final specification and measured receipts."
+    inputs:
+      - "T047, T021-T025, and T048 receipts"
+      - "Godot adapter, proof helpers, fixtures, integration tests, and unified runner"
+      - "Independent Godot 4.7.2 full-run evidence"
+    constraints:
+      - "Read-only."
+      - "Do not edit repository files."
+      - "Reject any mandatory level that is skipped, simulated, unsupported, or green despite missing evidence."
+    expected_output:
+      - "accepted | rejected"
+      - "P0-P5 criterion evidence map"
+      - "Adapter and fixture integration risks"
+      - "Exact follow-up if rejected"
+    receipt:
+      result: rejected
+      decision: "Normal-path P0-P5 execution is proven, but the tranche is not accepted until vendor immutability, nonzero process outcomes, and actionable WARN preservation are recovered."
+      passed:
+        - "Exact adapter binding, explicit path, bounded timeout, and default-locale UTF-8 decode."
+        - "Live P0, P1, P2, P3, P4 AVI/proof sheet, P5 ZIP export/audit, and unified execution."
+      failed:
+        - "Default wrapper execution can generate vendor __pycache__."
+        - "A nonzero P1 payload exit_code can be classified PASS."
+        - "Actionable adapter/preflight WARN can be erased by P2/P5 aggregation."
+        - "Expected-failure and unexpected-success aggregation lack dedicated tests."
+      next_allowed_task: T050
+
+  - id: T050
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Recover Judge-rejected adapter outcome semantics, vendor immutability, WARN preservation, and unified-runner edge coverage."
+    allowed_files:
+      - ".agents/skills/mado-loop/scripts/common/godot_tool.py"
+      - ".agents/skills/mado-loop/scripts/common/layout_proof.py"
+      - ".agents/skills/mado-loop/scripts/common/release_proof.py"
+      - "tests/unit/test_godot_tool.py"
+      - "tests/unit/test_test_runner.py"
+      - "tests/integration/test_p0_p1.py"
+      - "tests/integration/test_p2_p3.py"
+      - "tests/integration/test_p5.py"
+    verify:
+      - "Vendor snapshot passes before and after live P0-P5 execution with neither PYTHONUTF8 nor PYTHONDONTWRITEBYTECODE set."
+      - "Wrapper/process nonzero exit evidence is FAIL."
+      - "Actionable WARN survives adapter, P2, and P5 aggregation; explicitly non-actionable pack-template notices may be normalized with a documented exact rule."
+      - "Expected failure and unexpected success are directly tested as non-green."
+      - "Relevant units and all live P0-P5 tests pass."
+    stop_if:
+      - "A vendor byte must change."
+      - "Clean P5 pack cannot be distinguished from actionable preflight warnings."
+      - "The same verification fails twice for the same unexplained cause."
+    receipt:
+      result: done
+      changed_files:
+        - ".agents/skills/mado-loop/scripts/common/godot_tool.py"
+        - ".agents/skills/mado-loop/scripts/common/layout_proof.py"
+        - ".agents/skills/mado-loop/scripts/common/release_proof.py"
+        - "tests/unit/test_godot_tool.py"
+        - "tests/unit/test_test_runner.py"
+        - "tests/integration/test_p2_p3.py"
+        - "tests/integration/test_p5.py"
+      commands:
+        - cmd: "python -m unittest tests.unit.test_godot_tool tests.unit.test_test_runner"
+          status: pass
+          summary: "18 focused tests passed."
+        - cmd: "MADO_GODOT_BIN=Godot-4.7.2 python tests/run_tests.py with PYTHONUTF8 and PYTHONDWRITEBYTECODE unset"
+          status: pass
+          summary: "19 live tests passed: P0/P1 4, P2/P3 5, P4 4, P5 6."
+        - cmd: "python -m unittest tests.unit.test_vendor_snapshot after the live runner"
+          status: pass
+          summary: "4 vendor tests passed and VENDOR_PYC_COUNT=0."
+      summary: "Disabled wrapper bytecode writes, classified wrapper/payload nonzero exits as FAIL, preserved actionable WARN through adapter/P2/P5 while normalizing only the exact template-not-required pack notice, and directly tested expected/unexpected unittest outcomes."
+
+  - id: T051
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Re-audit the Godot adapter and P0-P5 fixture integration after T050 recovery."
+    inputs:
+      - "T049 rejection"
+      - "T050 receipt and changed files"
+      - "Independent environment-variable-free 18 focused unit, 19 live integration, and post-run vendor snapshot evidence"
+    constraints:
+      - "Read-only."
+      - "Audit only this integration tranche, not unfinished packaging or publication tasks."
+      - "Reject if any T049 defect remains or proof is simulated/skipped."
+    expected_output:
+      - "accepted | rejected"
+      - "Recovery criterion evidence"
+      - "Residual risks"
+    receipt:
+      result: accepted
+      decision: "All four T049 defects are recovered; the Godot adapter and executable P0-P5 fixture integration tranche is accepted. This is not an overall repository completion decision."
+      evidence:
+        - "Wrapper execution uses -B and forces child PYTHONDONTWRITEBYTECODE=1; post-run vendor snapshot passed with zero vendor pyc files."
+        - "Nonzero wrapper and payload exits classify FAIL."
+        - "Actionable WARN survives adapter, P2, and P5; only the exact pack/patch template-not-required notice is normalized."
+        - "Unified runner directly covers expected failure and unexpected success as non-green."
+        - "Godot 4.7.2 live runner passed 19 tests with no skips, failures, or errors."
+      residual_risks:
+        - "Linux CI, reproducible packaging, Windows install/uninstall, and final release acceptance remain outside this tranche."
+      next_allowed_task: T031
+
+  - id: T031
+    type: worker
+    assignee: Worker
+    status: active
+    objective: "Implement reproducible skill-only packaging and validation."
+    allowed_files:
+      - "scripts/package.py"
+      - "tests/integration/test_package.py"
+      - ".gitignore"
+    verify:
+      - "Reproducible package validates, includes vendor, and excludes repo-only files and generated ZIPs."
+    stop_if:
+      - "The installed payload contract is ambiguous."
+    receipt: null
+
+  - id: T032
+    type: worker
+    assignee: Worker
+    status: queued
+    objective: "Implement transactional Windows PowerShell 5.1+ install and ownership-safe uninstall."
+    allowed_files:
+      - "scripts/install.ps1"
+      - "scripts/uninstall.ps1"
+      - "tests/integration/install/**"
+    verify:
+      - "Clean install, upgrade/backup, collision refusal, rollback, owned uninstall, and Unicode HOME pass in Windows PowerShell 5.1 and pwsh 7."
+    stop_if:
+      - "An unrelated installed skill would be overwritten or deleted."
+    receipt: null
+
+  - id: T033
+    type: worker
+    assignee: Worker
+    status: queued
+    objective: "Implement Windows-primary and Linux GitHub Actions for mandatory production gates."
+    allowed_files:
+      - ".github/workflows/ci.yml"
+    verify:
+      - "Workflow parses and installs exact Godot 4.7.2 dependencies before mandatory P0-P5/package/install jobs."
+    stop_if:
+      - "A mandatory gate would be silently skipped or artifacts publish after failure."
+    receipt: null
+
+  - id: T034
+    type: worker
+    assignee: Worker
+    status: queued
+    objective: "Complete practical README, changelog, and repository hygiene documentation."
+    allowed_files:
+      - "README.md"
+      - "CHANGELOG.md"
+      - ".gitignore"
+    verify:
+      - "All directive documentation topics are covered and unresolved root license is stated accurately."
+    stop_if:
+      - "A root license choice would be invented."
+    receipt: null
+
+  - id: T040
+    type: pm
+    assignee: PM
+    status: queued
+    reasoning_hint: high
+    objective: "Run complete local release acceptance, clean generated junk, inspect the final diff, and create coherent local commits without pushing."
+    inputs:
+      - "T010, T020, T030 receipts"
+    constraints:
+      - "Do not mark unknown mandatory checks as PASS."
+      - "Do not modify any game project or user-installed skill."
+    expected_output:
+      - "P0-P5 evidence"
+      - "Windows install/package evidence"
+      - "Clean diff and secret scan"
+      - "Commit plan"
+    receipt: null
+
+  - id: T900
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Perform a pre-push criterion audit and authorize or reject push."
+    inputs:
+      - "All implementation receipts"
+      - "T040 local acceptance receipt"
+      - "Local commits and clean status"
+    constraints:
+      - "Read-only."
+      - "Reject push if any mandatory local gate is not PASS."
+    expected_output:
+      - "push_allowed | push_rejected"
+      - "criterion evidence map"
+    receipt: null
+
+  - id: T910
+    type: pm
+    assignee: PM
+    status: queued
+    reasoning_hint: high
+    objective: "Rerun the full suite and non-force push main only after T900 PASS and remote authentication."
+    inputs:
+      - "T900 receipt"
+    constraints:
+      - "No force push."
+      - "Do not push when verification is stale or dirty."
+    expected_output:
+      - "Full rerun receipt"
+      - "Remote main commit SHA"
+    receipt: null
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit every production acceptance criterion including remote main and actual Windows/Linux CI, then decide whether MADO LOOP 1.0.0 is complete."
+    inputs:
+      - "All task receipts"
+      - "Final verification"
+      - "Current Git diff/status"
+    constraints:
+      - "Read-only."
+      - "Reject completion when any mandatory item is FAIL, UNKNOWN, SKIPPED, stale, or unsupported by evidence."
+    expected_output:
+      - "complete | not_complete"
+      - "criterion-by-criterion evidence map"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt: null
+
+checks:
+  dirty_fingerprint: "empty-repository"
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

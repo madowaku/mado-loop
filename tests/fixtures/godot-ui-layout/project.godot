@@ -1,0 +1,14 @@
+[application]
+config/name="MADO P2 UI Fixture"
+run/main_scene="res://valid.tscn"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[gui]
+theme/custom="res://game_theme.tres"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"

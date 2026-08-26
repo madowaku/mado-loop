@@ -1,0 +1,6 @@
+interface:
+  display_name: "MADO LOOP"
+  short_description: "Orchestrate and prove Godot game production work"
+  default_prompt: "Use $mado-loop to build, integrate, test, and prove this Godot game change."
+policy:
+  allow_implicit_invocation: false

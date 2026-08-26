@@ -1,0 +1,1 @@
+"""MADO LOOP test package."""
