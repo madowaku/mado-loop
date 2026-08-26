@@ -21,7 +21,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T034
+active_task: T040
 
 tasks:
   - id: T003
@@ -1348,7 +1348,7 @@ tasks:
   - id: T034
     type: worker
     assignee: Worker
-    status: active
+    status: done
     objective: "Complete practical README, changelog, and repository hygiene documentation."
     allowed_files:
       - "README.md"
@@ -1358,12 +1358,118 @@ tasks:
       - "All directive documentation topics are covered and unresolved root license is stated accurately."
     stop_if:
       - "A root license choice would be invented."
-    receipt: null
+    receipt:
+      result: done
+      changed_files:
+        - "README.md"
+        - "CHANGELOG.md"
+        - ".gitignore"
+      commands:
+        - cmd: "README mandatory-topic, exact six-workflow, and relative-link audit"
+          status: pass
+          summary: "17 documentation topics, all six directive workflows/routes, and seven relative links passed."
+        - cmd: "git diff --check -- README.md CHANGELOG.md .gitignore"
+          status: pass
+        - cmd: "Generated artifact scan"
+          status: pass
+      summary: "Added a practical Japanese production README, 1.0.0 changelog with honest pending evidence, and repository hygiene ignores without hiding product, vendor, license, documentation, or CI files. Root first-party licensing remains owner-unselected and is stated explicitly."
+      residual_risks:
+        - "Hosted GitHub Actions success remains unproven and is documented as pending."
+
+  - id: T059
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T034 documentation for specification coverage, command accuracy, honest evidence claims, licensing safety, and repository hygiene."
+    inputs:
+      - "T034 receipt and changed files"
+      - "Final README and example-workflow directive"
+      - "Actual scripts, VERSION, notices, Skill references, and CI workflow"
+    constraints:
+      - "Read-only."
+      - "Reject invented commands, hosted-CI success claims, implicit invocation, or an assumed root license."
+      - "All six specified example prompts and route sequences must be preserved."
+    expected_output:
+      - "accepted | rejected"
+      - "Documentation criterion map"
+      - "Residual documentation or licensing risks"
+      - "next_allowed_task"
+    receipt:
+      result: rejected
+      decision: "T034 documentation is not accepted because README and the linked proof ladder use stale P1-P4 meanings that conflict with the final specification, classifier, fixtures, and exact workflow routes."
+      passed:
+        - "Required topics, exact six prompts/routes, commands, explicit invocation, optional capability policy, licensing, changelog, links, ignore rules, and junk scan."
+      failed:
+        - "README and proof-ladder.md define P1 headless/static, P2 runtime, P3 visual/interaction, and P4 gameplay instead of implemented P1 runtime, P2 layout, P3 behavior, and P4 visual motion."
+      next_allowed_task: T060
+
+  - id: T060
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Recover T034 by unifying README and the canonical proof ladder with the final specification and executable fixture assignments."
+    allowed_files:
+      - "README.md"
+      - ".agents/skills/mado-loop/references/proof/proof-ladder.md"
+    verify:
+      - "Both documents define P0 static/syntax-import, P1 runtime, P2 layout, P3 behavior, P4 visual motion, and P5 release."
+      - "Definitions agree with classify_proof.py and T021-T024 fixture assignments."
+      - "All six specified README workflows remain byte-for-byte unchanged."
+      - "Relative links and diff check pass."
+    stop_if:
+      - "Runtime code or tests must change."
+      - "The final proof assignments remain ambiguous after source comparison."
+    receipt:
+      result: done
+      changed_files:
+        - "README.md"
+        - ".agents/skills/mado-loop/references/proof/proof-ladder.md"
+      commands:
+        - cmd: "Canonical assignment and stale-mapping assertions against classifier and fixtures"
+          status: pass
+        - cmd: "README exact six-workflow and seven-link audit"
+          status: pass
+        - cmd: "git diff --check -- README.md .agents/skills/mado-loop/references/proof/proof-ladder.md"
+          status: pass
+      summary: "Unified both documents to P0 static, P1 runtime, P2 layout, P3 behavior, P4 visual motion, and P5 release while preserving escalation and rerun contracts."
+
+  - id: T061
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Re-audit T034 documentation after T060 canonical proof-ladder recovery."
+    inputs:
+      - "T059 rejection"
+      - "T060 receipt and changed files"
+      - "Final specification, classifier, and executable fixture assignments"
+    constraints:
+      - "Read-only."
+      - "Reject any remaining proof-level inconsistency or regression in the six exact workflows."
+    expected_output:
+      - "accepted | rejected"
+      - "Recovery evidence"
+      - "Residual documentation risks"
+      - "next_allowed_task"
+    receipt:
+      result: accepted
+      decision: "T060 fully closes the stale proof-level defect; accept the T034 documentation tranche."
+      evidence:
+        - "README and proof-ladder.md consistently match the classifier and executable fixtures for P0 static, P1 runtime, P2 layout, P3 behavior, P4 visual motion, and P5 release."
+        - "Required skipped gate => UNKNOWN, lower-gate inclusion, and repair/downstream rerun semantics remain intact."
+        - "Six exact prompts/routes and seven relative links pass; classify_proof unit tests passed 8/8."
+        - "Commands, invocation policy, optional capability handling, CI honesty, licensing, changelog, and ignore rules have no regression."
+      residual_risks:
+        - "Hosted GitHub Actions success remains unobserved and is documented honestly."
+        - "Root first-party license remains owner-unselected and is documented honestly."
+        - "Cross-zlib package byte identity remains explicitly unproven."
+      next_allowed_task: T040
 
   - id: T040
     type: pm
     assignee: PM
-    status: queued
+    status: active
     reasoning_hint: high
     objective: "Run complete local release acceptance, clean generated junk, inspect the final diff, and create coherent local commits without pushing."
     inputs:

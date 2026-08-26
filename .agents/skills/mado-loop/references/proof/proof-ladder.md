@@ -4,12 +4,12 @@ Use the lowest-cost evidence first and escalate only as far as the request and c
 
 ## Levels
 
-- **P0 — Syntax/import:** parse, load, import, and deterministic contract checks succeed for changed material.
-- **P1 — Headless/static integration:** Godot headless checks, resource resolution, scene loading, and nonvisual integration checks succeed.
-- **P2 — Runtime smoke:** the relevant scene or game starts and the changed path executes without blocking runtime errors.
-- **P3 — Visual and interaction inspection:** captured output and input behavior demonstrate the intended UI, animation, sprite, or gameplay state.
-- **P4 — Gameplay/playtest:** declared scenarios exercise mechanics and user flows, with measurable observations separated from subjective feel.
-- **P5 — Export/release:** the intended export or release candidate is produced and audited for launchability, required content, configuration, and distributable artifacts.
+- **P0 — Static Proof:** syntax, import, parse, and other static checks succeed for changed material.
+- **P1 — Runtime Proof:** the relevant project boots or starts, runtime errors are checked, and runtime readiness is established.
+- **P2 — Layout Proof:** UI and layout are measured and inspected through static visual evidence and screenshots.
+- **P3 — Behavior Proof:** deterministic scenarios prove gameplay, input, and state-transition behavior.
+- **P4 — Visual Motion Proof:** animation and motion are inspected through capture and temporal evidence, including a proof sheet or video when required.
+- **P5 — Release Proof:** the intended export or artifact is produced and audited as a release candidate for launchability, required content, configuration, and distributable artifacts.
 
 ## Escalation and repair
 
