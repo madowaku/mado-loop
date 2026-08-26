@@ -21,7 +21,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T073
+active_task: T076
 
 tasks:
   - id: T003
@@ -1945,12 +1945,110 @@ tasks:
   - id: T073
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Commit and non-force push T071, then require exact-commit hosted green and independently audit the published package."
     inputs:
       - "T071 Worker receipt"
       - "T072 push authorization"
+    constraints:
+      - "Commit only ci.yml and Goal board."
+      - "No force push."
+      - "Do not call 1.0 complete before all-green, artifact audit, and final Judge."
+    expected_output:
+      - "Exact pushed SHA and hosted all-green receipt"
+      - "Downloaded artifact 107-safe-member audit"
+      - "Extracted validation, vendor manifests, and local SHA equality"
+    receipt:
+      result: pushed_ci_failed
+      commands:
+        - cmd: "git push origin main"
+          status: pass
+          summary: "Non-force pushed 692b0917ced84b0688ea01de4b54194fcc405772."
+        - cmd: "GitHub Actions run 32964382813"
+          status: fail
+          summary: "Both Windows and Ubuntu mandatory P0-P5 jobs pass, as do integration, unit, sprite, routing, lint, license, and package; Windows install alone fails before tests because Chocolatey re-enters an already-present PowerShell 7.6.3 MSI and returns 1603."
+      summary: "The Linux virtual-display boundary is proven and every runtime matrix is green; only the stateful PowerShell MSI bootstrap blocks publication."
+
+  - id: T074
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Replace the stateful Windows PowerShell MSI bootstrap with the official PowerShell 7.6.3 portable ZIP pinned by SHA-256, while preserving the PS5.1 and pwsh 7.6.3 install contract."
+    allowed_files:
+      - ".github/workflows/ci.yml"
+    constraints:
+      - "Use the official PowerShell v7.6.3 win-x64 ZIP and verify its authoritative SHA-256 before extraction."
+      - "Expose the extracted pwsh.exe to subsequent install tests without relying on runner image PATH state."
+      - "Preserve exact PS5.1 and pwsh 7.6.3 verification and every existing mandatory test."
+      - "Do not add continue-on-error, skips, sleeps, retries, or MSI/Chocolatey fallback."
+      - "Do not commit or push."
+    verify:
+      - "Workflow YAML parses."
+      - "Pinned URL, SHA-256 comparison, extraction, explicit exact-version probe, and PATH handoff are fatal."
+      - "Windows PowerShell 5.1 remains independently required."
+      - "Only ci.yml differs beyond the PM board."
+    stop_if:
+      - "The official release digest cannot be independently established."
+      - "A mandatory install test or version contract must be weakened."
+      - "Any production code, test, vendor, or manifest change is required."
+    receipt:
+      result: done
+      changed_files:
+        - ".github/workflows/ci.yml"
+      commands:
+        - cmd: "GitHub release API asset digest audit"
+          status: pass
+          summary: "Official PowerShell v7.6.3 win-x64 ZIP reports sha256:07ddb0d00b660459560ef82a9841da7705b27cd5dcca5a0d7b025a98eca29eca."
+        - cmd: "YAML parse, package and Windows install regression"
+          status: pass
+          summary: "YAML PASS; package 9/9 and install 14/14 passed locally."
+        - cmd: "git diff --check and scope audit"
+          status: pass
+          summary: "Only ci.yml plus the PM-owned Goal board differ."
+      summary: "Windows install now downloads and hashes the official portable PowerShell 7.6.3 ZIP, exports its exact executable and PATH, and preserves fatal PS5.1/pwsh version and install-contract checks without MSI state."
+
+  - id: T075
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T074 against hosted run 32964382813 and authorize or reject the portable PowerShell recovery push."
+    inputs:
+      - "Windows install failure log from run 32964382813"
+      - "Official PowerShell v7.6.3 release asset digest"
+      - "T074 receipt and workflow diff"
+    constraints:
+      - "Read-only."
+      - "Reject unverified downloads, PATH ambiguity, weakened version checks, skipped install tests, or unrelated changes."
+      - "Do not call 1.0 complete."
+    expected_output:
+      - "push_allowed | push_rejected"
+      - "Failure-to-fix evidence map"
+      - "next_allowed_task"
+    receipt:
+      result: push_allowed
+      decision: "Approve the workflow-only portable PowerShell recovery push; overall completion remains blocked."
+      evidence:
+        - "Hosted run 32964382813 proves every mandatory job except windows-install, whose sole failure is Chocolatey PowerShell MSI 1603 before its test steps."
+        - "The official GitHub release API digest matches the pinned v7.6.3 win-x64 ZIP SHA-256."
+        - "Download, hash, extract, executable presence, nonzero probe, and exact-version checks are fatal before environment handoff."
+        - "The exact portable pwsh path and PATH precedence reach the full install contract while independent PS5.1 and pwsh 7.6.3 checks remain."
+        - "YAML, package 9/9, install 14/14, diff, and scope checks pass with no skipped or weakened gate."
+      residual_risks:
+        - "Exact recovery commit hosted all-green, package publication, artifact audit, and final Judge remain required."
+      next_allowed_task: T076
+
+  - id: T076
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: high
+    objective: "Commit and non-force push the Judge-approved portable PowerShell recovery, require exact-commit hosted all-green, and independently audit the published package."
+    inputs:
+      - "T074 Worker receipt"
+      - "T075 push authorization"
     constraints:
       - "Commit only ci.yml and Goal board."
       - "No force push."
@@ -1985,7 +2083,7 @@ checks:
   dirty_fingerprint: "empty-repository"
   last_verification:
     result: fail
-    task: T070
+    task: T073
     commands:
       - "T040 complete local acceptance PASS"
-      - "GitHub Actions run 32963273791 FAIL: Linux P4 display absent; forced PowerShell MSI reinstall 1603"
+      - "GitHub Actions run 32964382813: both Windows/Linux P0-P5 PASS; Windows install bootstrap FAIL due PowerShell MSI 1603; publish skipped"

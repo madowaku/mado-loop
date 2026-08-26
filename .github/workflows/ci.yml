@@ -279,29 +279,31 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          $installed = ''
-          try {
-            $probe = @(pwsh.exe -NoProfile -Command '$PSVersionTable.PSVersion.ToString()' 2>$null)
-            if ($LASTEXITCODE -eq 0) {
-              $installed = (($probe | ForEach-Object { $_.ToString() }) -join "`n").Trim()
-            }
-          } catch {
-            $installed = ''
-          }
-          if ($installed -eq '7.6.3') {
-            Write-Host 'PowerShell 7.6.3 already installed; skipping Chocolatey reinstall.'
-          } else {
-            & choco install powershell-core --version=7.6.3 --yes --no-progress --allow-downgrade --force
-            if ($LASTEXITCODE -ne 0) {
-              throw "Chocolatey PowerShell 7.6.3 install failed with exit code $LASTEXITCODE"
-            }
-          }
+          $version = '7.6.3'
+          $archiveName = "PowerShell-$version-win-x64.zip"
+          $archive = Join-Path $env:RUNNER_TEMP $archiveName
+          $install = Join-Path $env:RUNNER_TEMP "pwsh-$version"
+          $uri = "https://github.com/PowerShell/PowerShell/releases/download/v$version/$archiveName"
+          Invoke-WebRequest -Uri $uri -OutFile $archive
+          $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+          $expected = '07ddb0d00b660459560ef82a9841da7705b27cd5dcca5a0d7b025a98eca29eca'
+          if ($actual -cne $expected) { throw "PowerShell ZIP SHA-256 mismatch: $actual" }
+          Expand-Archive -LiteralPath $archive -DestinationPath $install
+          $pwsh = Join-Path $install 'pwsh.exe'
+          if (-not (Test-Path -LiteralPath $pwsh -PathType Leaf)) { throw "Portable PowerShell executable missing: $pwsh" }
+          $probe = @(& $pwsh -NoProfile -Command '$PSVersionTable.PSVersion.ToString()' 2>&1)
+          $exitCode = $LASTEXITCODE
+          $installed = (($probe | ForEach-Object { $_.ToString() }) -join "`n").Trim()
+          if ($exitCode -ne 0) { throw "Portable PowerShell probe failed with exit code $exitCode`: $installed" }
+          if ($installed -cne $version) { throw "Expected portable PowerShell $version, got $installed" }
+          "MADO_PWSH_BIN=$pwsh" >> $env:GITHUB_ENV
+          $install >> $env:GITHUB_PATH
       - name: Require Windows PowerShell 5.1 and PowerShell 7.6.3
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
           if ($PSVersionTable.PSVersion.ToString() -notlike '5.1.*') { throw "Expected Windows PowerShell 5.1" }
-          $pwsh = & pwsh.exe -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
+          $pwsh = & $env:MADO_PWSH_BIN -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
           if ($pwsh.Trim() -cne '7.6.3') { throw "Expected pwsh 7.6.3, got $pwsh" }
       - name: Install validator dependency
         run: python -m pip install --disable-pip-version-check 'PyYAML==6.0.2'
@@ -310,7 +312,11 @@ jobs:
         env:
           MADO_SKILL_VALIDATOR: ${{ github.workspace }}\.ci\codex\codex-rs\skills\src\assets\samples\skill-creator\scripts\quick_validate.py
       - name: Run isolated Windows install and uninstall contract
-        run: python -B -m unittest tests.integration.install.test_install -v
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & $env:MADO_PWSH_BIN -NoProfile -Command 'python -B -m unittest tests.integration.install.test_install -v'
+          if ($LASTEXITCODE -ne 0) { throw "Windows install contract failed with exit code $LASTEXITCODE" }
 
   license-attribution:
     runs-on: ubuntu-24.04
