@@ -21,7 +21,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T079
+active_task: T082
 
 tasks:
   - id: T003
@@ -2151,7 +2151,7 @@ tasks:
   - id: T079
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Commit and non-force push deterministic packaging recovery, require exact hosted all-green, and prove published artifact SHA equality with a Windows local build."
     inputs:
@@ -2164,12 +2164,27 @@ tasks:
     expected_output:
       - "Exact pushed SHA and hosted all-green receipt"
       - "Published artifact structural, validator, vendor, and SHA equality audit"
-    receipt: null
+    receipt:
+      result: hosted_green_artifact_byte_identical
+      commands:
+        - cmd: "git push origin main"
+          status: pass
+          summary: "Non-force pushed ae7b79fcda779811429014abd5d7c6b2b5a7b367."
+        - cmd: "GitHub Actions run 32967083386"
+          status: pass
+          summary: "Every mandatory Windows/Linux job, both P0-P5 matrices, Windows install contract, package, and publish-package passed on exact ae7b79f."
+        - cmd: "Published artifact safety, validation, and vendor audit"
+          status: pass
+          summary: "107 ordered unique safe ZIP_STORED members; no repo-only/generated entries; official Skill validation passes; godot-skill 70/70 and sprite-tools 2/2 manifest entries match."
+        - cmd: "Linux CI artifact versus Windows local package byte equality"
+          status: pass
+          summary: "Both archives are 825582 bytes and byte-identical with SHA-256 89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc."
+      summary: "Exact hosted execution, publication, artifact safety, extracted validation, vendor integrity, and cross-platform byte reproducibility are all proven."
 
   - id: T999
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Audit every production acceptance criterion including remote main and actual Windows/Linux CI, then decide whether MADO LOOP 1.0.0 is complete."
     inputs:
@@ -2184,15 +2199,127 @@ tasks:
       - "criterion-by-criterion evidence map"
       - "missing evidence"
       - "next task if not complete"
+    receipt:
+      result: not_complete
+      decision: "Reject final completion pending a bounded documentation recovery."
+      evidence:
+        - "All implementation, local acceptance, exact remote main, hosted Windows/Linux, publication, artifact safety/validation, vendor manifests, and cross-platform byte-SHA criteria pass."
+        - "README and CHANGELOG still claim hosted CI is unconfirmed and cross-zlib byte identity is unproven, contradicting run 32967083386 and artifact SHA 89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc."
+      missing_evidence:
+        - "User-facing documentation must state the final proven hosted and cross-platform package result."
+      residual_warnings:
+        - "Node20 deprecation annotations are nonblocking."
+      next_allowed_task: T080
+
+  - id: T080
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Update README and CHANGELOG so the documented 1.0 production state matches the proven hosted CI and cross-platform package evidence."
+    allowed_files:
+      - "README.md"
+      - "CHANGELOG.md"
+    constraints:
+      - "Replace only stale hosted-CI and zlib-reproducibility claims; preserve truthful macOS and licensing limitations."
+      - "Reference exact run 32967083386, commit ae7b79f, and SHA-256 89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc where useful."
+      - "Do not modify runtime, tests, workflow, payload, vendor, manifests, or release scope."
+      - "Do not commit or push."
+    verify:
+      - "No stale unconfirmed/unproven hosted or zlib claim remains."
+      - "README and CHANGELOG agree on Windows/Ubuntu proof, artifact publication, and byte identity."
+      - "Markdown links and diff check pass."
+      - "Only the two allowed docs differ beyond the PM board."
+    stop_if:
+      - "Any runtime, test, workflow, payload, vendor, manifest, or release-scope change is required."
+      - "A claim cannot be supported by the accepted run or artifact evidence."
+      - "The macOS or first-party-license limitation would need to be removed."
+    receipt:
+      result: done
+      changed_files:
+        - "README.md"
+        - "CHANGELOG.md"
+      commands:
+        - cmd: "Hosted and package evidence claim audit"
+          status: pass
+          summary: "Both docs record ae7b79f, run 32967083386, 107 safe ZIP_STORED members, artifact publication, and byte-identical SHA 89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc."
+        - cmd: "Stale wording, Markdown, diff and scope audit"
+          status: pass
+          summary: "Unconfirmed/unproven claims are removed; ZIP_STORED zlib independence is explicit; macOS and first-party-license limitations remain; only README/CHANGELOG plus PM board differ."
+      summary: "User-facing documentation now matches the accepted hosted and cross-platform package evidence without inflating platform or licensing claims."
+
+  - id: T081
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T080 for evidence-accurate documentation and authorize or reject the docs-only push."
+    inputs:
+      - "T999 not-complete receipt"
+      - "Run 32967083386 and artifact SHA receipt"
+      - "T080 diff"
+    constraints:
+      - "Read-only."
+      - "Reject inflated platform claims, removed macOS/licensing limitations, or unsupported evidence."
+    expected_output:
+      - "push_allowed | push_rejected"
+      - "Claim-to-evidence map"
+      - "next_allowed_task"
+    receipt:
+      result: push_allowed
+      decision: "Approve the docs-only production-evidence recovery push; final completion remains blocked."
+      evidence:
+        - "README and CHANGELOG accurately cite ae7b79f, run 32967083386 all-green publication, 107 safe ZIP_STORED members, and cross-platform SHA 89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc."
+        - "ZIP_STORED zlib independence is supported by package.py and package tests."
+        - "macOS hosted-gate and first-party root-license limitations remain intact."
+        - "No stale claim, unrelated change, or whitespace error remains."
+      residual_risks:
+        - "The docs commit needs exact hosted green and artifact SHA re-audit before T083."
+      next_allowed_task: T082
+
+  - id: T082
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: high
+    objective: "Commit and non-force push the Judge-approved docs recovery, then require its exact hosted run to be all-green and published artifact SHA-stable."
+    inputs:
+      - "T080 Worker receipt"
+      - "T081 push authorization"
+    constraints:
+      - "Commit only README, CHANGELOG, and Goal board."
+      - "No force push."
+      - "Do not declare completion before exact docs commit CI and final Judge."
+    expected_output:
+      - "Exact pushed docs SHA"
+      - "Exact hosted all-green and artifact SHA receipt"
+    receipt: null
+
+  - id: T083
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Perform final acceptance after the documentation recovery is on clean exact-main with green hosted CI."
+    inputs:
+      - "All prior Judge and PM receipts"
+      - "T082 exact hosted result"
+      - "Current clean git state"
+    constraints:
+      - "Read-only."
+      - "Reject any FAIL, UNKNOWN, stale documentation, dirty production file, or remote mismatch."
+    expected_output:
+      - "complete | not_complete"
+      - "Final criterion evidence map"
     receipt: null
 
 checks:
   dirty_fingerprint: "empty-repository"
   last_verification:
-    result: fail
-    task: T076
+    result: pass
+    task: T079
     commands:
       - "T040 complete local acceptance PASS"
-      - "GitHub Actions run 32965551555 exact dca6045: every mandatory job and publish-package PASS"
-      - "Published artifact: 107 safe members, official validation PASS, both vendor manifests PASS"
-      - "Artifact SHA equality FAIL: Linux CI DEFLATE 29e2a62f... differs from Windows local DEFLATE 92d026d6... despite identical entry bytes and metadata"
+      - "GitHub Actions run 32967083386 exact ae7b79f: every mandatory job and publish-package PASS"
+      - "Published artifact: 107 ordered unique safe ZIP_STORED members, official validation PASS, both vendor manifests PASS"
+      - "Linux CI artifact equals Windows local build byte-for-byte: SHA-256 89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc"

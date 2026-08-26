@@ -127,7 +127,7 @@ Godot操作は固定した `godot-skill` snapshotをfirst-party adapter越しに
 python scripts/package.py --output dist/mado-loop-1.0.0.zip --json
 ```
 
-[CI workflow](.github/workflows/ci.yml) は routing、unit、sprite、Windows/Ubuntu Godot integration、P0–P5、deterministic package、Windows dual-shell install、third-party attributionを必須gateにし、全gate成功時だけZIP artifactを公開する設計です。workflowの構造とローカルtestは検証済みですが、現時点でhosted GitHub Actionsの成功実績は未確認です。
+[CI workflow](.github/workflows/ci.yml) は routing、unit、sprite、Windows/Ubuntu Godot integration、P0–P5、deterministic package、Windows dual-shell install、third-party attributionを必須gateにし、全gate成功時だけZIP artifactを公開します。production head `ae7b79fcda779811429014abd5d7c6b2b5a7b367` では [GitHub Actions run 32967083386](https://github.com/madowaku/mado-loop/actions/runs/32967083386) がWindows/Ubuntuの全必須gateとartifact publishまで成功しました。公開artifactは107件の安全な`ZIP_STORED` memberを含み、Linux CI buildとWindows local buildのbyte-identical SHA-256は `89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc` です。
 
 ## Troubleshooting
 

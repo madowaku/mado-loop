@@ -17,9 +17,9 @@ Production release candidateとして、以下を実装しました。
 - Windows / Ubuntu向けGitHub Actions定義。routing、unit、sprite、Godot integration、P0–P5、package、install、licenseを必須gateとし、成功時だけartifactを公開
 - third-party attributionと固定upstream commitの記録
 
-### Pending evidence and limitations
+### Evidence and limitations
 
-- GitHub Actions workflowは静的構造とローカル契約を検証済みですが、hosted runner上での成功実績はまだ確認されていません。
+- production head `ae7b79fcda779811429014abd5d7c6b2b5a7b367` の [GitHub Actions run 32967083386](https://github.com/madowaku/mado-loop/actions/runs/32967083386) は、Windows/Ubuntuの全必須gateとartifact publishまで成功しました。公開artifactは107件の安全な`ZIP_STORED` memberを含み、Linux CI buildとWindows local buildのbyte-identical SHA-256は `89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc` です。
 - Windows 11 / Godot 4.7.2 stableがprimary release gateです。Godot 4.6は互換scope、Linux / macOSはbest effortで、1.0 CIにmacOS hosted gateはありません。
-- deterministic ZIPは現在のWindows / Python / zlib環境で反復byte identityを実証済みです。異なるzlib version間のbyte identityは独立には実証していません。
+- deterministic ZIPは`ZIP_STORED`で構築するためzlib versionに依存せず、Linux CI buildとWindows local buildでも同一SHA-256を確認しています。
 - first-party codeのroot licenseはowner未選択です。vendored third-party codeのlicenseだけが各notice/license fileに明記されています。
