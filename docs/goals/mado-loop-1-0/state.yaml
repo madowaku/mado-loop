@@ -21,7 +21,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T031
+active_task: T033
 
 tasks:
   - id: T003
@@ -1023,37 +1023,221 @@ tasks:
   - id: T031
     type: worker
     assignee: Worker
-    status: active
-    objective: "Implement reproducible skill-only packaging and validation."
+    status: done
+    objective: "Package the accepted .agents/skills/mado-loop payload as a byte-reproducible, install-ready, path-safe ZIP without changing P0-P5 runtime behavior."
     allowed_files:
       - "scripts/package.py"
       - "tests/integration/test_package.py"
       - ".gitignore"
     verify:
-      - "Reproducible package validates, includes vendor, and excludes repo-only files and generated ZIPs."
+      - "Two builds from the same Git tree have identical ZIP SHA-256 bytes."
+      - "Entry order is lexicographic; timestamps, permissions, external attributes, compression method/level, and path separators are deterministic and independent of filesystem mtimes or temporary paths."
+      - "Archive root is exactly mado-loop/ and contains the complete Skill payload including both vendor payloads and licenses."
+      - "tests, docs, .github, root scripts, .git, __pycache__, pyc, .godot, dist, and generated ZIPs are absent."
+      - "A generated archive cannot recursively package itself."
+      - "Archive paths reject parent traversal, absolute paths, and drive-qualified paths."
+      - "The extracted Skill passes quick_validate.py."
+      - "At least seven integration tests cover success, byte identity, deterministic paths/metadata, vendor presence, repo-only absence, recursive-package exclusion, and extracted validation."
     stop_if:
       - "The installed payload contract is ambiguous."
-    receipt: null
+      - "Packaging requires changes to accepted P0-P5 implementation or immutable vendor bytes."
+      - "Identical source trees cannot produce identical ZIP SHA-256 after two focused attempts."
+    receipt:
+      result: done
+      changed_files:
+        - "scripts/package.py"
+        - "tests/integration/test_package.py"
+        - ".gitignore"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.integration.test_package"
+          status: pass
+          summary: "9 packaging integration tests passed on independent rerun."
+        - cmd: "Two independent package.py builds in separate temporary directories"
+          status: pass
+          summary: "Both produced 107 members and byte-identical SHA-256 ff5eb2ec77ccf02560761bff9711a65a60a2bb52b3487f92a55cf0c3e250d5a9."
+        - cmd: "Extract package and run official quick_validate.py"
+          status: pass
+          summary: "Extracted mado-loop Skill is valid."
+        - cmd: "ZIP path, metadata, vendor, forbidden-content, recursive-package, and ZIP Slip audits"
+          status: pass
+      summary: "Implemented atomic byte-reproducible packaging of exactly the accepted Skill payload under mado-loop/, with fixed ordering/metadata/compression, mandatory vendor gates, generated/repo-only exclusions, path-safety audit, portable validation, and stable JSON evidence."
+
+  - id: T052
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T031 against the owner's byte-reproducible install-ready packaging contract."
+    inputs:
+      - "T031 receipt and changed files"
+      - "Owner's SHA-identical, payload-only, vendor-required, forbidden-entry, recursion, validation, and ZIP Slip criteria"
+    constraints:
+      - "Read-only."
+      - "Do not rerun P0-P5; they are already accepted and unchanged."
+      - "Reject content-equivalent but byte-different packages."
+    expected_output:
+      - "accepted | rejected"
+      - "Criterion evidence map"
+      - "Residual reproducibility or installation risks"
+    receipt:
+      result: accepted
+      decision: "T031 satisfies the owner's byte-reproducible, install-ready packaging contract; the packaging tranche is complete."
+      evidence:
+        - "Source is exactly .agents/skills/mado-loop and the sole archive root is mado-loop/."
+        - "Recursive payload collection, mandatory vendor/license sentinels, forbidden generated/repo-only exclusions, recursion prevention, and ZIP Slip rejection are directly tested."
+        - "Order, timestamp, Unix 0644 attributes, creator system, compression method/level, and separators are fixed; filesystem mtime, output name, and temp path are not serialized."
+        - "9 packaging tests passed; two separate builds produced 107 members and identical SHA-256 ff5eb2ec77ccf02560761bff9711a65a60a2bb52b3487f92a55cf0c3e250d5a9."
+        - "Extracted mado-loop passed official quick_validate.py."
+      residual_risks:
+        - "Cross-zlib-version byte identity is not independently demonstrated; current Windows/Python/zlib reproducibility is proven."
+        - "Transactional installation and ownership-safe uninstall remain T032."
+      next_allowed_task: T032
 
   - id: T032
     type: worker
     assignee: Worker
-    status: queued
-    objective: "Implement transactional Windows PowerShell 5.1+ install and ownership-safe uninstall."
+    status: done
+    objective: "Implement package-based transactional Windows installation, clean owned upgrades, rollback, and ownership-safe uninstall for PowerShell 5.1 and 7."
     allowed_files:
       - "scripts/install.ps1"
       - "scripts/uninstall.ps1"
       - "tests/integration/install/**"
     verify:
-      - "Clean install, upgrade/backup, collision refusal, rollback, owned uninstall, and Unicode HOME pass in Windows PowerShell 5.1 and pwsh 7."
+      - "Release install consumes a T031 ZIP and defaults to $HOME/.agents/skills/mado-loop; testable HomePath and explicit Version inputs never mutate the real user home."
+      - "ZIP entries are audited before extraction: sole mado-loop/ root, no traversal, absolute, UNC, drive-qualified, backslash, duplicate/case-confusing, symlink, or forbidden generated entries."
+      - "Install uses a sibling staging directory, validates required Skill/vendor files before publication, writes an ownership manifest with version, package hash, installed file paths and hashes, then atomically publishes."
+      - "An unrelated, unmarked, malformed, dirty, modified, or unexpectedly extended destination is refused without overwrite."
+      - "A clean installer-owned destination upgrades through backup/swap; a measured post-backup failure restores the exact previous tree and removes transient staging/backup directories."
+      - "Uninstall requires a valid ownership manifest, removes only unchanged installer-owned files, preserves modified or untracked user files, prunes only empty owned directories, and never touches tools, projects, other skills, or generated assets."
+      - "Version detection reports installed and requested versions and refuses accidental downgrade unless explicitly authorized by a narrowly scoped switch."
+      - "Clean install, upgrade, collision refusal, rollback, owned uninstall, modified/untracked preservation, corrupt package rejection, and Unicode/space HomePath pass in Windows PowerShell 5.1 and pwsh 7."
+      - "Release and any optional development mode are explicitly distinct; no symlink or dependency installation occurs implicitly."
     stop_if:
       - "An unrelated installed skill would be overwritten or deleted."
-    receipt: null
+      - "T031 package or accepted runtime/vendor files must change."
+      - "PowerShell 5.1 and 7 cannot share one ownership/rollback contract."
+      - "Rollback cannot be proven without exposing a production-unsafe failure mechanism."
+    receipt:
+      result: done
+      changed_files:
+        - "scripts/install.ps1"
+        - "scripts/uninstall.ps1"
+        - "tests/integration/install/__init__.py"
+        - "tests/integration/install/test_install.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s tests/integration/install -p test_*.py -v"
+          status: pass
+          summary: "11 dual-shell scenarios passed in 58.372s on independent rerun with PowerShell 5.1 and pwsh 7.6.3."
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.integration.test_package"
+          status: pass
+          summary: "9 T031 package regressions passed."
+        - cmd: "Real user HomePath fingerprint before/after"
+          status: pass
+          summary: "The real installed-skill path was unchanged."
+      summary: "Implemented release-only package install with ZIP safety audit, same-volume stage/backup/swap, ownership/hash manifest, clean reinstall/upgrade/downgrade policy, guarded rollback proof, collision and reparse refusal, and uninstall that removes only unchanged managed files while preserving modified/untracked files and directories."
+
+  - id: T053
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T032 transactional install, rollback, collision safety, and ownership-safe uninstall across PowerShell 5.1 and 7."
+    inputs:
+      - "T032 receipt and changed files"
+      - "T031 accepted package contract"
+      - "Final installation and uninstall specification"
+    constraints:
+      - "Read-only."
+      - "Do not mutate the real user HomePath or installed skills."
+      - "Reject any path that can overwrite or delete unrelated/user-modified content."
+    expected_output:
+      - "accepted | rejected"
+      - "Install/upgrade/rollback/uninstall criterion map"
+      - "Residual Windows safety risks"
+    receipt:
+      result: rejected
+      decision: "Core install/upgrade/rollback behavior is proven, but internal managed-directory reparse points can cross the ownership boundary during uninstall; strict marker and exact ZIP-root validation are also incomplete."
+      passed:
+        - "Release-only exact destination, ZIP input, stage/backup/swap, version/package/file-hash manifest."
+        - "Collision/dirty refusal, upgrade/downgrade policy, normal rollback and ownership-preserving uninstall."
+        - "11 tests passed without skips on PowerShell 5.1 and pwsh 7.6.3; real HomePath remained unchanged."
+      failed:
+        - "Uninstall does not reject reparse directories on every managed path component before deletion."
+        - "Install/uninstall marker required-field and digest validation differs."
+        - "ZIP root and required-entry checks are not ordinal case-exact."
+        - "Restore-failure backup preservation lacks a direct fixture."
+      next_allowed_task: T054
+
+  - id: T054
+    type: worker
+    assignee: Worker
+    status: done
+    objective: "Recover T032 by enforcing managed-path reparse boundaries, strict shared marker semantics, ordinal ZIP paths, and direct backup-preservation tests."
+    allowed_files:
+      - "scripts/install.ps1"
+      - "scripts/uninstall.ps1"
+      - "tests/integration/install/**"
+    verify:
+      - "Before any uninstall deletion, every managed path and existing component is preflighted and any internal reparse/junction refuses the whole operation without changing the outside tree or managed install."
+      - "Both scripts require identical schema, exact product, numeric SemVer, 64-lowercase-hex package digest, safe unique managed paths, and 64-lowercase-hex file digests."
+      - "ZIP root and required entries use ordinal case-exact comparison; case-varied mado-loop roots fail."
+      - "A guarded restore-failure fixture leaves the exact backup intact for recovery and never cleans it in finally."
+      - "PowerShell 5.1 and pwsh 7 run internal-junction, malformed/missing marker fields, case-varied root, restore-failure backup, and all prior scenarios without skips."
+    stop_if:
+      - "External-tree safety cannot be proven with a junction fixture."
+      - "A rollback failure can still delete the sole valid backup."
+      - "Files outside T054 scope must change."
+    receipt:
+      result: done
+      changed_files:
+        - "scripts/install.ps1"
+        - "scripts/uninstall.ps1"
+        - "tests/integration/install/test_install.py"
+      commands:
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.integration.install.test_install -v"
+          status: pass
+          summary: "14 tests passed in 135.806s on independent rerun across PowerShell 5.1 and pwsh 7.6.3 with no skips."
+        - cmd: "PYTHONDONTWRITEBYTECODE=1 python -m unittest tests.integration.test_package"
+          status: pass
+          summary: "9 T031 package regressions passed."
+      summary: "Added complete pre-delete managed-component reparse preflight, strict equivalent marker validation, ordinal ZIP root/required entry checks, and guarded restore-failure evidence that preserves the sole exact backup. Internal junction, marker mutation, root casing, and backup survival fixtures pass on both shells."
+
+  - id: T055
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Re-audit T032 installation after T054 ownership-boundary recovery."
+    inputs:
+      - "T053 rejection"
+      - "T054 receipt and changed files"
+      - "Independent dual-shell 14-test and package 9-test evidence"
+    constraints:
+      - "Read-only."
+      - "Reject if a managed junction can touch an outside tree or if rollback can discard the sole valid backup."
+      - "Audit only T032/T054, not T033 CI."
+    expected_output:
+      - "accepted | rejected"
+      - "Recovery evidence map"
+      - "Residual install/uninstall risks"
+    receipt:
+      result: accepted
+      decision: "T053's four installation safety defects are resolved; accept the T032 install, upgrade, rollback, and ownership-safe uninstall contract."
+      passed:
+        - "Uninstall completes managed-path reparse preflight before deletion; the internal-junction fixture leaves the outside tree, install tree, and marker unchanged."
+        - "Install and uninstall enforce equivalent strict marker schema, product, SemVer, lowercase SHA-256, safe path, case-uniqueness, and required-sentinel rules."
+        - "ZIP root and required entries are ordinal case-exact and unsafe, confusing, traversal, drive-qualified, and symlink entries are refused."
+        - "Normal rollback restores the exact old tree; guarded restore failure preserves the sole exact backup and removes staging."
+        - "14 install tests passed without skips across PowerShell 5.1 and pwsh 7.6.3; 9 package regressions passed; real HomePath remained unchanged."
+      residual_risks:
+        - "A general TOCTOU race remains between preflight and deletion in a concurrently mutated filesystem."
+        - "NTFS alternate data streams and reserved device names remain optional future hardening outside the T032 contract."
+      next_allowed_task: T033
 
   - id: T033
     type: worker
     assignee: Worker
-    status: queued
+    status: active
     objective: "Implement Windows-primary and Linux GitHub Actions for mandatory production gates."
     allowed_files:
       - ".github/workflows/ci.yml"
