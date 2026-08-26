@@ -143,8 +143,13 @@ jobs:
           $ErrorActionPreference = 'Stop'
           foreach ($tool in @('ffmpeg', 'ffprobe')) {
             $command = Get-Command $tool -ErrorAction Stop
-            & $command.Source -version | Select-Object -First 1
-            if ($LASTEXITCODE -ne 0) { throw "$tool failed" }
+            $output = @(& $command.Source -version 2>&1)
+            $exitCode = $LASTEXITCODE
+            $text = (($output | ForEach-Object { $_.ToString() }) -join "`n").Trim()
+            if ($exitCode -ne 0) { throw "$tool failed with exit code $exitCode`: $text" }
+            if ([string]::IsNullOrWhiteSpace($text)) { throw "$tool returned empty output" }
+            $firstLine = (($text -split "`r?`n")[0]).Trim()
+            Write-Host "${tool}: $firstLine"
           }
       - name: Run live P0-P3 integration
         run: python -B -m unittest tests.integration.test_p0_p1 tests.integration.test_p2_p3 -v
@@ -202,8 +207,13 @@ jobs:
           $ErrorActionPreference = 'Stop'
           foreach ($tool in @('ffmpeg', 'ffprobe')) {
             $command = Get-Command $tool -ErrorAction Stop
-            & $command.Source -version | Select-Object -First 1
-            if ($LASTEXITCODE -ne 0) { throw "$tool failed" }
+            $output = @(& $command.Source -version 2>&1)
+            $exitCode = $LASTEXITCODE
+            $text = (($output | ForEach-Object { $_.ToString() }) -join "`n").Trim()
+            if ($exitCode -ne 0) { throw "$tool failed with exit code $exitCode`: $text" }
+            if ([string]::IsNullOrWhiteSpace($text)) { throw "$tool returned empty output" }
+            $firstLine = (($text -split "`r?`n")[0]).Trim()
+            Write-Host "${tool}: $firstLine"
           }
       - name: Run unified mandatory P0-P5 runner
         run: python -B tests/run_tests.py

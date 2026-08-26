@@ -21,7 +21,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T910
+active_task: T067
 
 tasks:
   - id: T003
@@ -1653,7 +1653,7 @@ tasks:
   - id: T910
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Rerun the full suite and non-force push main only after T900 PASS and remote authentication."
     inputs:
@@ -1664,6 +1664,100 @@ tasks:
     expected_output:
       - "Full rerun receipt"
       - "Remote main commit SHA"
+    receipt:
+      result: pushed_ci_failed
+      commands:
+        - cmd: "git push origin main"
+          status: pass
+          summary: "Non-force pushed cdbfde8983bdc87f3f04ee901bca5603dfe38cbf."
+        - cmd: "GitHub Actions run 32961825221"
+          status: fail
+          summary: "Vendor/unit/sprite/routing/lint/license gates are green, but both Godot matrices fail in the shared ffmpeg verification step after printing a valid version."
+      summary: "The three original environment boundaries are repaired; hosted logs exposed a fourth shared PowerShell pipeline-exit bug."
+
+  - id: T065
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Repair the shared ffmpeg/ffprobe version probe so output truncation cannot overwrite the native process exit code on either hosted operating system."
+    allowed_files:
+      - ".github/workflows/ci.yml"
+    constraints:
+      - "Apply the same fatal probe logic in godot-integration and proof-tests."
+      - "Capture all native output first, immediately save LASTEXITCODE, then validate nonzero and empty output before printing the first line."
+      - "Do not use a live pipeline from the native process into Select-Object."
+      - "Do not weaken ffmpeg or ffprobe requirements and do not commit or push."
+    verify:
+      - "Workflow YAML parses."
+      - "Both duplicated probe blocks are identical."
+      - "Local pwsh probes for ffmpeg and ffprobe return nonempty first lines with exit code zero."
+      - "Non-vendor diff check passes and only ci.yml changes from HEAD."
+    stop_if:
+      - "A dependency check must become nonfatal."
+      - "Any file outside ci.yml is required."
+      - "The same verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - ".github/workflows/ci.yml"
+      commands:
+        - cmd: "YAML parse and duplicate-block comparison"
+          status: pass
+          summary: "Both probe blocks parse and are byte-identical."
+        - cmd: "Local pwsh ffmpeg and ffprobe robust probe"
+          status: pass
+          summary: "Both tools return nonempty 8.1.1 version output with native exit code zero."
+        - cmd: "git diff --check and scope audit"
+          status: pass
+          summary: "ci.yml is clean; only ci.yml plus the PM-owned board are modified."
+      summary: "Removed the live native-to-Select-Object pipeline and now validates captured output plus the immediately saved exit code."
+
+  - id: T066
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: medium
+    objective: "Audit the T065 shared PowerShell probe recovery and authorize or reject the second recovery commit/push."
+    inputs:
+      - "Hosted run 32961825221 failed logs"
+      - "T065 receipt and ci.yml diff"
+    constraints:
+      - "Read-only."
+      - "Reject if either duplicated block differs or native exit/output validation is weakened."
+      - "Do not call 1.0 complete."
+    expected_output:
+      - "push_allowed | push_rejected"
+      - "Failure-to-fix evidence map"
+      - "next_allowed_task"
+    receipt:
+      result: push_allowed
+      decision: "T065 validly repairs the shared ffmpeg/ffprobe probe in both matrix jobs."
+      evidence:
+        - "Hosted logs print a valid ffmpeg version immediately before the old live Select-Object pipeline reports failure."
+        - "Both new blocks capture all output, save LASTEXITCODE immediately, reject nonzero/empty output, and only then print the validated first line."
+        - "YAML parse, duplicate-block parity, local tool probes, scope audit, and diff check pass."
+      residual_risks:
+        - "Exact recovery commit hosted CI and package artifact publication/audit remain required."
+      next_allowed_task: T067
+
+  - id: T067
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Commit and non-force push the T065 probe recovery, then monitor its exact hosted run through artifact publication."
+    inputs:
+      - "T065 Worker receipt"
+      - "T066 push authorization"
+    constraints:
+      - "Commit only ci.yml and the Goal board."
+      - "No force push."
+      - "Do not call 1.0 complete before hosted green and artifact audit."
+    expected_output:
+      - "Exact pushed commit SHA"
+      - "Hosted run result"
+      - "Published artifact audit or exact next recovery"
     receipt: null
 
   - id: T999
@@ -1690,7 +1784,7 @@ checks:
   dirty_fingerprint: "empty-repository"
   last_verification:
     result: fail
-    task: T062
+    task: T910
     commands:
       - "T040 complete local acceptance PASS"
-      - "GitHub Actions run #2 FAIL; hosted recovery T063 required"
+      - "GitHub Actions run 32961825221 FAIL in shared ffmpeg/ffprobe PowerShell probe"
