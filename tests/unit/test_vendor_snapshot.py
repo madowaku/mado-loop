@@ -48,6 +48,8 @@ class VendorSnapshotTests(unittest.TestCase):
             shutil.copytree(VENDOR_ROOT / "payload", upstream / "skill" / "godot")
             shutil.copy2(VENDOR_ROOT / "LICENSE", upstream / "LICENSE")
             subprocess.run(["git", "init", "-q", str(upstream)], check=True)
+            subprocess.run(["git", "-C", str(upstream), "config", "maintenance.auto", "false"], check=True)
+            subprocess.run(["git", "-C", str(upstream), "config", "gc.auto", "0"], check=True)
             subprocess.run(["git", "-C", str(upstream), "add", "."], check=True)
             subprocess.run(
                 [

@@ -130,6 +130,10 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($version)) { throw 'Godot version probe returned empty output' }
           if (-not $version.StartsWith('4.7.2.stable', [StringComparison]::Ordinal)) { throw "Unexpected Godot version: $version" }
           "MADO_GODOT_BIN=$godot" >> $env:GITHUB_ENV
+      - name: Install pinned ffmpeg plus ffprobe on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: choco install ffmpeg --version=8.1.1 --yes --no-progress
       - name: Install ffmpeg plus ffprobe on Ubuntu
         if: runner.os == 'Linux'
         shell: bash
@@ -194,6 +198,10 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($version)) { throw 'Godot version probe returned empty output' }
           if (-not $version.StartsWith('4.7.2.stable', [StringComparison]::Ordinal)) { throw "Unexpected Godot version: $version" }
           "MADO_GODOT_BIN=$godot" >> $env:GITHUB_ENV
+      - name: Install pinned ffmpeg plus ffprobe on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: choco install ffmpeg --version=8.1.1 --yes --no-progress
       - name: Install ffmpeg plus ffprobe on Ubuntu
         if: runner.os == 'Linux'
         shell: bash

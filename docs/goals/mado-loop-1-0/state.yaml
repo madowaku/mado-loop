@@ -21,7 +21,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T067
+active_task: T070
 
 tasks:
   - id: T003
@@ -1744,7 +1744,7 @@ tasks:
   - id: T067
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Commit and non-force push the T065 probe recovery, then monitor its exact hosted run through artifact publication."
     inputs:
@@ -1758,6 +1758,108 @@ tasks:
       - "Exact pushed commit SHA"
       - "Hosted run result"
       - "Published artifact audit or exact next recovery"
+    receipt:
+      result: pushed_ci_failed
+      commands:
+        - cmd: "git push origin main"
+          status: pass
+          summary: "Non-force pushed 996592242da795713fd1b8084fba80c9753face9."
+        - cmd: "GitHub Actions run 32962389812"
+          status: fail
+          summary: "Ubuntu Godot integration and all earlier recovered gates pass; Windows lacks ffmpeg, and one Linux unit fixture cleanup races Git 2.55 background maintenance."
+      summary: "The shared probe repair is validated on Ubuntu; remaining failures require Windows installation and deterministic test-fixture cleanup."
+
+  - id: T068
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Install pinned ffmpeg on both Windows matrices and eliminate the Git maintenance race in the live vendor fixture without changing production behavior."
+    allowed_files:
+      - ".github/workflows/ci.yml"
+      - "tests/unit/test_vendor_snapshot.py"
+    constraints:
+      - "Install Chocolatey ffmpeg 8.1.1 on Windows in both matrices and retain the existing fatal common probe."
+      - "Keep Ubuntu apt installation unchanged."
+      - "Disable maintenance.auto and gc.auto inside the temporary fixture repository before add/commit; do not add sleeps or ignore cleanup errors."
+      - "Do not modify vendor, manifests, production scripts, or expected hashes."
+      - "Do not commit or push."
+    verify:
+      - "Workflow YAML parses and Windows/Linux install plus common probe blocks are duplicated consistently."
+      - "The live vendor comparison test passes repeatedly on the available host."
+      - "Full unit 68/68 and focused vendor/sprite tests pass."
+      - "Package 9/9 and diff check pass."
+      - "Only the two allowed files differ beyond the PM board."
+    stop_if:
+      - "Vendor bytes or expected hashes would need changing."
+      - "The cleanup fix requires sleeps or suppressed errors."
+      - "Any file outside allowed_files is required."
+      - "The same verification fails twice."
+    receipt:
+      result: done
+      changed_files:
+        - ".github/workflows/ci.yml"
+        - "tests/unit/test_vendor_snapshot.py"
+      commands:
+        - cmd: "Workflow YAML and duplicated install audit"
+          status: pass
+          summary: "Both matrices contain the same Windows-only pinned Chocolatey ffmpeg 8.1.1 install and preserve the common fatal probe."
+        - cmd: "Live vendor comparison repeated three times"
+          status: pass
+          summary: "3/3 runs passed after disabling maintenance.auto and gc.auto in the temporary fixture repo."
+        - cmd: "Focused vendor/sprite; full unit; package"
+          status: pass
+          summary: "9/9 focused, 68/68 unit, and 9/9 package passed."
+        - cmd: "git diff --check and scope audit"
+          status: pass
+          summary: "Only the two allowed files plus the PM board differ; vendor, manifests, and expected hashes are unchanged."
+      summary: "Windows now installs the same pinned media tool family required by the fatal probe, and the Git 2.55 fixture cleanup race is eliminated without sleeps or ignored errors."
+
+  - id: T069
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T068 against hosted run 32962389812 and authorize or reject the third recovery push."
+    inputs:
+      - "Hosted Windows missing-tool and Linux cleanup-race logs"
+      - "T068 receipt and diff"
+    constraints:
+      - "Read-only."
+      - "Reject unpinned Windows installation, weakened probes, sleeps, cleanup suppression, or vendor changes."
+      - "Do not call 1.0 complete."
+    expected_output:
+      - "push_allowed | push_rejected"
+      - "Failure-to-fix evidence map"
+      - "next_allowed_task"
+    receipt:
+      result: push_allowed
+      decision: "T068 validly repairs both hosted failures without weakening verification."
+      evidence:
+        - "Windows failed only because ffmpeg was absent after successful console Godot bootstrap; both matrices now install exact Chocolatey ffmpeg 8.1.1."
+        - "Linux unit failed only during temporary .git cleanup; fixture-local maintenance and gc auto are disabled before commit without sleeps or suppressed errors."
+        - "Live 3/3, focused 9/9, unit 68/68, package 9/9, diff, scope, and no-vendor-change audits pass."
+      residual_risks:
+        - "Exact recovery commit hosted green and published artifact audit remain required."
+      next_allowed_task: T070
+
+  - id: T070
+    type: pm
+    assignee: PM
+    status: active
+    reasoning_hint: medium
+    objective: "Commit and non-force push T068, then monitor the exact hosted run through package publication and independent artifact audit."
+    inputs:
+      - "T068 Worker receipt"
+      - "T069 push authorization"
+    constraints:
+      - "Commit only ci.yml, the unit fixture test, and Goal board."
+      - "No force push."
+      - "Do not call 1.0 complete before hosted green, artifact audit, and final Judge."
+    expected_output:
+      - "Exact pushed SHA and hosted run"
+      - "All mandatory job results"
+      - "Artifact validation and SHA comparison"
     receipt: null
 
   - id: T999
@@ -1784,7 +1886,7 @@ checks:
   dirty_fingerprint: "empty-repository"
   last_verification:
     result: fail
-    task: T910
+    task: T067
     commands:
       - "T040 complete local acceptance PASS"
-      - "GitHub Actions run 32961825221 FAIL in shared ffmpeg/ffprobe PowerShell probe"
+      - "GitHub Actions run 32962389812 FAIL: Windows ffmpeg absent; Linux fixture cleanup race"
