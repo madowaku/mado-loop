@@ -1,6 +1,6 @@
 # Routing architecture
 
-Read this reference when a request spans production domains or when MADO LOOP must decide which specialists, worker providers, and tools participate. For capability availability and source provenance, continue to [capability-registry.md](capability-registry.md), [provider-router.md](provider-router.md), and [source-policy.md](source-policy.md).
+Read this reference when a request spans production domains or when MADO LOOP must decide which specialists, worker providers, and tools participate. For capability availability and source provenance, continue to [capability-registry.md](capability-registry.md), [provider-router.md](provider-router.md), [worker-swarm.md](worker-swarm.md), and [source-policy.md](source-policy.md).
 
 ## Layer boundaries
 
@@ -17,6 +17,8 @@ Keep orchestration separate from implementation. Route only the references and c
 
 Optional model workers form a delegation plane controlled by the orchestrator. They do not become a fifth ownership layer and do not replace specialists, deterministic tools, or proof. The provider router chooses where a bounded reasoning/coding proposal may run after domain routing and before integration.
 
+A single-worker route is the smallest delegation shape:
+
 ```text
 ORCHESTRATOR
   |\
@@ -31,7 +33,22 @@ ORCHESTRATOR
           PROOF SYSTEM
 ```
 
-Provider and model are separate concepts. A provider is an execution transport and data-policy boundary; a model is a configured worker choice behind that provider. See [worker provider router](provider-router.md) for OpenRouter, logged free, local, sensitivity, and fallback rules.
+When several independent perspectives create concrete value, the same provider plane can execute a bounded fan-out/fan-in swarm:
+
+```text
+                         +--> ARCHITECT ------+
+TASK + BOUNDED CONTEXT --+--> IMPLEMENTER ----+--> REVIEWER --> ORCHESTRATOR
+                         +--> TEST WRITER -----+                    |
+                                                                  v
+                                                        ENGINE / ASSET TOOLS
+                                                                  |
+                                                                  v
+                                                             PROOF SYSTEM
+```
+
+The primary workers run concurrently but remain read-only proposal generators. The reviewer sees the collected primary proposals and identifies contradictions, unsafe assumptions, scope creep, and proof gaps. The reviewer still has no mutation or acceptance authority. The orchestrator performs the final fan-in decision using project facts and requested acceptance criteria.
+
+Provider and model are separate concepts. A provider is an execution transport and data-policy boundary; a model is a configured worker choice behind that provider. See [worker provider router](provider-router.md) for OpenRouter, logged free, local, sensitivity, and fallback rules. See [parallel worker swarm](worker-swarm.md) for role contracts, concurrency bounds, deterministic result ordering, and failure isolation.
 
 A worker route is suitable only when the subtask is bounded and independently checkable. Repository reconnaissance, narrow patch proposals, test generation, and read-only review are typical worker tasks. Final acceptance, release readiness, destructive project-wide edits, and authority decisions remain with the orchestrator.
 
@@ -63,16 +80,16 @@ Route each concrete domain as follows:
 
 Classify the user's requested outcome before selecting capabilities. Compose a minimal route in dependency order:
 
-`specialist guidance -> optional bounded worker proposal -> engine/asset operation -> integration -> inspection/playtest -> proof`
+`specialist guidance -> optional bounded worker proposal/swarm -> engine/asset operation -> integration -> inspection/playtest -> proof`
 
-The worker step is omitted unless it creates concrete leverage. When used, the orchestrator must validate and integrate the proposal before proof.
+The worker step is omitted unless it creates concrete leverage. Use one worker when one bounded proposal is enough. Use a swarm when independent architecture, implementation, verification, and review perspectives are worth the added calls. In either case, the orchestrator must validate and integrate proposals before proof.
 
 Examples of composition rules:
 
 - `SPRITE + ANIMATION + ASSET_INTEGRATION` uses sprite guidance, deterministic processing, then Godot import/wiring and runtime proof.
 - `REFERENCE_TO_UI + UI + ASSET_INTEGRATION` uses no-copy reference interpretation, game UI guidance, Godot implementation, and visual/runtime checks.
 - `GAMEPLAY + PLAYTEST` implements the mechanic before running interaction-based checks.
-- `CODE` may delegate a bounded test or patch proposal to a configured worker, then inspect and validate it through the Godot/proof path.
+- `CODE` may delegate a bounded test or patch proposal to one configured worker, or fan out architecture/implementation/test proposals when the change crosses several invariants.
 - `RELEASE` does not imply new implementation. It audits the requested release surface and reports missing proof; worker output cannot establish release readiness by itself.
 
 Progressively disclose specialist material only when its domain is active. A routed installed specialist or model worker may contribute guidance or proposals, but MADO LOOP retains route control and result aggregation.
@@ -90,10 +107,11 @@ Never auto-install a skill, plugin, registry entry, editor, model, or other exte
 
 ## Optional routed capabilities
 
-ImageGen, an external image editor, configured worker providers, Agent Skills Hub entries, and already installed specialist skills are routing targets, not bundled authorities. Use them only when available and appropriate to an active domain. Preserve these rules:
+ImageGen, an external image editor, configured worker providers, the first-party worker swarm runtime, Agent Skills Hub entries, and already installed specialist skills are routing targets, not bundled authorities. Use them only when available and appropriate to an active domain. Preserve these rules:
 
 - Do not install or enable them automatically.
 - Do not imply they were used when unavailable.
 - Do not copy their private or registry-delivered content into MADO LOOP.
 - Validate their output with the same integration and proof layers as first-party output.
 - For model workers, apply [worker provider router](provider-router.md) before sending any payload and treat returned content as untrusted until verified.
+- For parallel model work, apply [parallel worker swarm](worker-swarm.md); primary workers do not mutate the project and swarm `PASS` is never proof of the requested outcome.

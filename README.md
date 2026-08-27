@@ -6,22 +6,21 @@ MADO LOOP は自動では起動しません。Codex で明示的に `$mado-loop`
 
 ## Philosophy
 
-基本ループは `UNDERSTAND → ROUTE → MAKE → INTEGRATE → RUN → INSPECT → VERIFY → FIX → PROVE` です。専門家の主張だけを完成証明にせず、実際のプロジェクトで観測できる証拠へ段階的に引き上げます。必須依存や必須検証が欠けた場合は green にせず、`UNKNOWN` または `FAIL` として正直に止まります。
+基本ループは `UNDERSTAND → ROUTE → MAKE → INTEGRATE → RUN → INSPECT → VERIFY → FIX → PROVE` です。専門家やmodel workerの主張だけを完成証明にせず、実際のプロジェクトで観測できる証拠へ段階的に引き上げます。必須依存や必須検証が欠けた場合は green にせず、`UNKNOWN` または `FAIL` として正直に止まります。
 
-アーキテクチャは責務を4層に分離します。
+アーキテクチャは責務を4層に分離し、その横にoptionalなworker delegation planeを置きます。
 
 ```text
 ORCHESTRATOR
-  ↓ 依頼の分類、経路選択、受入判定
-SPECIALISTS
-  ↓ ドメイン別の制作・設計ガイダンス
-ENGINE / ASSET TOOLS
-  ↓ 決定的なGodot操作・画像処理・統合
-PROOF SYSTEM
-     P0–P5の検査、証拠集約、結果判定
+  ├─ SPECIALISTS
+  ├─ OPTIONAL WORKERS
+  │    ├─ single worker
+  │    └─ parallel swarm
+  ├─ ENGINE / ASSET TOOLS
+  └─ PROOF SYSTEM (P0-P5)
 ```
 
-詳細は [routing architecture](.agents/skills/mado-loop/references/routing/architecture.md) と [capability registry](.agents/skills/mado-loop/references/routing/capability-registry.md) を参照してください。
+workerは提案を返すだけで、project mutation、integration、acceptance、proofのauthorityを持ちません。詳細は [routing architecture](.agents/skills/mado-loop/references/routing/architecture.md)、[capability registry](.agents/skills/mado-loop/references/routing/capability-registry.md)、[worker provider router](.agents/skills/mado-loop/references/routing/provider-router.md)、[parallel worker swarm](.agents/skills/mado-loop/references/routing/worker-swarm.md) を参照してください。
 
 ## Requirements
 
@@ -35,7 +34,7 @@ PROOF SYSTEM
 - sprite processorを使う経路では Pillow と NumPy（1.0 CI 固定値は Pillow 11.3.0 / NumPy 2.3.2）
 - release installer: Windows PowerShell 5.1 または PowerShell 7
 
-ImageGen、外部画像エディター、追加Skillなどは任意能力です。MADO LOOPが自動インストールすることはありません。
+ImageGen、外部画像エディター、model worker、追加Skillなどは任意能力です。MADO LOOPが自動インストールすることはありません。
 
 ## Install / update / uninstall
 
@@ -77,7 +76,7 @@ Codexへの依頼で明示的に呼びます。
 $mado-loop プレイヤーのダッシュを実装し、実際に操作して証明して
 ```
 
-暗黙起動はありません。router は依頼を `CODE`, `GAMEPLAY`, `UI`, `SPRITE`, `IMAGE`, `ANIMATION`, `ASSET_INTEGRATION`, `REFERENCE_TO_UI`, `PIXEL_ART`, `PLAYTEST`, `RELEASE` に分類します。複数ドメインでは `MIXED` を付加し、専門ガイダンス → ツール処理 → Godot統合 → 観察／playtest → proof の順で最小経路を構成します。
+暗黙起動はありません。router は依頼を `CODE`, `GAMEPLAY`, `UI`, `SPRITE`, `IMAGE`, `ANIMATION`, `ASSET_INTEGRATION`, `REFERENCE_TO_UI`, `PIXEL_ART`, `PLAYTEST`, `RELEASE` に分類します。複数ドメインでは `MIXED` を付加し、専門ガイダンス → optional worker proposal/swarm → ツール処理 → Godot統合 → 観察／playtest → proof の順で最小経路を構成します。
 
 分類器だけを確認する場合:
 
@@ -92,6 +91,58 @@ python .agents/skills/mado-loop/scripts/classify_task.py --pretty "UIを実装�
 - Image-to-UI: `REFERENCE_TO_UI + UI + ASSET_INTEGRATION`。参照をコピーせず構造・意図へ分解してUIへ再構成します。
 - Sprite: `SPRITE + ANIMATION + ASSET_INTEGRATION`。sprite guidance、決定的な正規化／slice／atlas処理、Godot importとruntime確認を通します。
 - Pixel art: `PIXEL_ART` を追加し、整数scale、grid、補間などpixel-safe制約を適用します。
+
+## Worker Provider Router
+
+bounded worker taskは `provider_router.py` で実行先を選べます。providerとmodelは分離され、model IDは設定として扱います。
+
+```text
+public  → OpenRouter / local / explicitly allowed logged-free lane
+private → OpenRouter / local
+secret  → local only
+```
+
+OpenRouter利用例:
+
+```powershell
+$env:OPENROUTER_API_KEY = "..."
+$env:MADO_OPENROUTER_MODEL = "<provider/model>"
+python .agents/skills/mado-loop/scripts/provider_router.py plan --sensitivity private
+```
+
+OpenRouter requestにはprovider privacy constraintsを付与します。logged free laneはpublic payload + explicit consent以外では選択しません。worker responseは常にuntrusted proposalです。
+
+## Parallel Worker Swarm
+
+一つの提案で十分でない場合、`worker_swarm.py` がprimary workerを並列fan-outし、その後reviewerでfan-inします。
+
+```text
+                         +--> ARCHITECT ------+
+TASK + BOUNDED CONTEXT --+--> IMPLEMENTER ----+--> REVIEWER --> ORCHESTRATOR
+                         +--> TEST WRITER -----+                    |
+                                                                  v
+                                                             P0-P5 PROOF
+```
+
+primary workersは同時実行されますがprojectを変更しません。結果はcompletion順ではなくcanonical role順で集約され、一つのworker failureは兄弟workerをキャンセルしません。reviewerもproposal reviewerであり、patch採用権限やproof authorityは持ちません。
+
+network callなしでplanだけ確認:
+
+```powershell
+python .agents/skills/mado-loop/scripts/worker_swarm.py plan --sensitivity private
+```
+
+default swarmを実行:
+
+```powershell
+python .agents/skills/mado-loop/scripts/worker_swarm.py run `
+  --sensitivity private `
+  --task-file .mado/swarm-task.txt `
+  --context-file .mado/swarm-context.txt `
+  --output .mado/swarm-result.json
+```
+
+swarmの`PASS`はmodel callsが完了したことだけを意味します。resultは常に `proof_status: UNPROVEN` と `integration_required: true` を持ち、MADO LOOP orchestratorが提案を選択・統合した後に通常のP0–P5を実行します。
 
 ## P0–P5 proof ladder
 
@@ -111,6 +162,7 @@ python .agents/skills/mado-loop/scripts/classify_task.py --pretty "UIを実装�
 | Workflow | 依頼例 | Expected route |
 | --- | --- | --- |
 | Gameplay | `$mado-loop RESTマスでHPが上限を超えないよう修正して` | `GAMEPLAY → Godot → P3` |
+| Complex gameplay refactor | `$mado-loop 戦闘入力を整理して回帰まで証明して` | `GAMEPLAY/CODE → SWARM(ARCHITECT + IMPLEMENTER + TEST WRITER → REVIEWER) → INTEGRATE → P3` |
 | Sprite + Gameplay | `$mado-loop 京都ボスに狐火の攻撃アニメーションを追加して` | `SPRITE → ART DIRECTION → IMAGE GENERATION → NORMALIZE → GODOT INTEGRATION → GAMEPLAY → P3 → P4` |
 | UI | `$mado-loop ボス戦HUDをもっと見やすくして` | `GAME UI → GODOT UI → P2` |
 | Image-to-UI | `$mado-loop この画像を参考に戦闘HUDを作り直して` | `REFERENCE ANALYSIS → GAME UI → IMPLEMENT → CAPTURE → COMPARE → P2/P4` |
@@ -129,14 +181,18 @@ python scripts/package.py --output dist/mado-loop-1.0.0.zip --json
 
 [CI workflow](.github/workflows/ci.yml) は routing、unit、sprite、Windows/Ubuntu Godot integration、P0–P5、deterministic package、Windows dual-shell install、third-party attributionを必須gateにし、全gate成功時だけZIP artifactを公開します。production head `ae7b79fcda779811429014abd5d7c6b2b5a7b367` では [GitHub Actions run 32967083386](https://github.com/madowaku/mado-loop/actions/runs/32967083386) がWindows/Ubuntuの全必須gateとartifact publishまで成功しました。公開artifactは107件の安全な`ZIP_STORED` memberを含み、Linux CI buildとWindows local buildのbyte-identical SHA-256は `89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc` です。
 
+provider/swarm unit testsはfake callerでselection、privacy、parallel fan-out、failure isolation、deterministic fan-in、authority invariantsを検証し、CIから外部model APIを呼びません。
+
 ## Troubleshooting
 
 - Godot、`ffmpeg`、`ffprobe`、Pillow、NumPyなど必須能力がない: 必須checkはPASSになりません。該当能力を自動導入せず、欠落と必要な次の操作を報告します。
+- worker providerが未設定: optional worker routeは`SKIPPED`/warningにできます。requiredなsecret delegationならlocal providerが必要です。
+- swarmの一部workerが失敗: successful proposalsを保持し、swarm statusは`WARN`。全primary worker失敗時だけ`FAIL`でreviewerをskipします。
 - `destination collision` / ownership marker error: インストール先にMADO LOOP管理外のtreeがあります。上書きしません。内容を確認し、利用者自身が退避先を決めてください。
 - dirty / modified / unexpected files: upgradeは既存treeを保護して拒否します。必要な変更を別の場所へ退避してから再実行してください。
 - install中の失敗: publish前の旧版はrollbackされます。restoreまで失敗した場合、`.agents/skills/.mado-loop.backup.<id>` が唯一の有効backupとして保存されるため、削除せず内容を確認してください。
 - uninstall後にtreeが残る: 変更済みmanaged fileまたはuntracked fileを保護した結果です。自動削除されません。
-- optional capabilityがない: warning / optional `SKIPPED` になり得ます。勝手なplugin・Skill・editorのinstallや、別能力への無言の置換はしません。
+- optional capabilityがない: warning / optional `SKIPPED` になり得ます。勝手なplugin・Skill・editor・modelのinstallや、別能力への無言の置換はしません。
 
 ## Licensing
 

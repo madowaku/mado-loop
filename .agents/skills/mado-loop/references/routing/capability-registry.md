@@ -1,6 +1,6 @@
 # Capability registry
 
-Use this registry after domain classification. It describes capability roles and availability behavior; provenance and update rules are in [source-policy.md](source-policy.md). Model-worker data handling and selection rules are in [provider-router.md](provider-router.md).
+Use this registry after domain classification. It describes capability roles and availability behavior; provenance and update rules are in [source-policy.md](source-policy.md). Model-worker data handling and selection rules are in [provider-router.md](provider-router.md), and parallel model orchestration rules are in [worker-swarm.md](worker-swarm.md).
 
 | Capability | Domains | Mode | Required when | Absence behavior |
 | --- | --- | --- | --- | --- |
@@ -17,6 +17,7 @@ Use this registry after domain classification. It describes capability roles and
 | OpenRouter worker | Any bounded reasoning/coding subtask | Optional external worker | Only when configured and selected by the orchestrator | Optional `SKIPPED`; never invent credentials or silently change model/data policy |
 | Empero logged free worker | Public bounded reasoning/coding subtask | Optional external worker | Only with public payload plus explicit logged-free consent | Optional `SKIPPED`; forbidden for private/secret payloads |
 | Local OpenAI-compatible worker | Any bounded reasoning/coding subtask | Optional local worker | Required only when a delegated `secret` payload must use a model | Optional `SKIPPED` unless secret delegation was explicitly required |
+| Parallel worker swarm | Any bounded subtask where independent proposals reduce blind spots | First-party orchestration over configured workers | Only when selected by the orchestrator or explicitly required by the user | Optional `SKIPPED`; fall back to one worker or local orchestration without weakening sensitivity or acceptance |
 | Installed specialist skill | Matching declared domains | Optional routed capability | Only when explicitly available and selected by the route | Optional `SKIPPED` unless the user made it a required dependency |
 | Agent Skills Hub registry | Matching declared domains | Discovery route only | Only when the user requests registry discovery | Optional `SKIPPED`; never auto-install |
 
@@ -27,8 +28,9 @@ For each selected capability, record:
 - active domain or domains;
 - whether it is required or optional for the requested claim;
 - availability before execution;
-- adapter, reference, or worker role;
+- adapter, reference, worker, or swarm role;
 - checks needed to validate its output;
-- for an external worker, sensitivity and provider data policy.
+- for an external worker, sensitivity and provider data policy;
+- for a swarm, primary roles, reviewer use, parallelism bound, and any worker failures.
 
-An installed specialist or worker model cannot replace the MADO LOOP result contract or release proof. A worker response is an untrusted proposal until integrated and verified. A vendor payload cannot be edited to fit a route; adapt it at the first-party boundary. An optional route becoming unavailable must not silently change the requested artifact or acceptance standard.
+An installed specialist or worker model cannot replace the MADO LOOP result contract or release proof. A worker response is an untrusted proposal until integrated and verified. Swarm transport `PASS` only means the scheduled proposal calls completed; every swarm result remains `UNPROVEN`. A vendor payload cannot be edited to fit a route; adapt it at the first-party boundary. An optional route becoming unavailable must not silently change the requested artifact or acceptance standard.

@@ -1,6 +1,6 @@
 # Worker provider router
 
-Read this reference only when MADO LOOP considers delegating a bounded reasoning or coding subtask to another model. Provider routing is an execution choice below domain/capability routing; it does not change the requested artifact, proof target, or acceptance contract.
+Read this reference only when MADO LOOP considers delegating a bounded reasoning or coding subtask to another model. Provider routing is an execution choice below domain/capability routing; it does not change the requested artifact, proof target, or acceptance contract. For parallel fan-out/fan-in execution, continue to [parallel worker swarm](worker-swarm.md).
 
 ## Purpose
 
@@ -72,6 +72,12 @@ python .agents/skills/mado-loop/scripts/provider_router.py call --provider local
 
 Prefer `--prompt-file` or `--stdin` over shell arguments for substantial prompts. Never commit API keys or secret-bearing worker payloads.
 
+## Single worker or swarm
+
+Use one worker when one bounded proposal or review is enough. Use [parallel worker swarm](worker-swarm.md) when independent architecture, implementation, verification, and review perspectives are likely to expose different failure modes.
+
+The swarm reuses this provider selection contract. One invocation selects one permitted provider/model configuration and applies the same sensitivity boundary to all scheduled workers. Parallelism must not become a privacy downgrade. Do not route private primary workers to one provider and a logged reviewer to another merely to save cost.
+
 ## Delegation contract
 
 Delegate only a bounded subtask with explicit inputs and expected output. Good worker tasks have a small blast radius and an independently checkable result. Examples include:
@@ -84,7 +90,7 @@ Delegate only a bounded subtask with explicit inputs and expected output. Good w
 
 Do not delegate final acceptance, release readiness, project-wide destructive edits, or authority decisions. The orchestrator must inspect the returned proposal, apply only the useful portion, and run the normal proof ladder.
 
-For parallel work, give each worker a non-overlapping scope or read-only review role. Merge through the orchestrator rather than allowing multiple model workers to mutate the same files concurrently.
+For parallel work, keep primary workers read-only proposal generators and perform cross-worker comparison in the reviewer/orchestrator fan-in. Do not allow multiple model workers to mutate the same files concurrently.
 
 ## Failure and fallback
 
