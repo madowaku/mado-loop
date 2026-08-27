@@ -1,10 +1,10 @@
 # Parallel worker swarm
 
-Read this reference when a bounded task benefits from several independent model proposals. The swarm is an execution pattern below MADO LOOP orchestration. It increases breadth and review pressure, but it never receives mutation authority or proof authority.
+Read this reference when a bounded task benefits from several independent model proposals and the desired role set is already known. This is the **fixed swarm** contract. When task domains should compose roles automatically, use [adaptive worker swarm](adaptive-swarm.md) instead. Both swarm modes remain execution patterns below MADO LOOP orchestration and never receive mutation or proof authority.
 
 ## Shape
 
-The default swarm is a two-stage fan-out/fan-in graph:
+The default fixed swarm is a two-stage fan-out/fan-in graph:
 
 ```text
                          +--> ARCHITECT ------+
@@ -37,23 +37,23 @@ Current first-party bounds:
 
 - task: at most 20,000 characters;
 - shared context: at most 120,000 characters;
-- primary roles: the declared built-in role set, unique;
+- primary roles: the declared built-in fixed role set, unique;
 - parallel worker threads: 1 through 8, default 3;
 - reviewer: one sequential fan-in call after primary workers;
-- provider/model selection: one provider policy for the whole swarm invocation.
+- provider/model selection: one provider policy for the whole fixed-swarm invocation.
 
 These are orchestration safety bounds, not model context-window claims. A configured provider/model may impose tighter limits and can fail independently.
 
 ## Provider and sensitivity
 
-Run [worker provider router](provider-router.md) before the swarm. The swarm selects one permitted provider/model configuration and reuses that data-policy boundary across all workers in the invocation.
+Run [worker provider router](provider-router.md) before the fixed swarm. The fixed swarm selects one permitted provider/model configuration and reuses that data-policy boundary across all workers in the invocation.
 
 - `secret` still requires local-only execution.
 - `private` never falls to a logged public lane.
 - Empero/free remains public-only and explicit opt-in.
 - OpenRouter requests retain the provider privacy constraints imposed by `provider_router.py`.
 
-Do not split one private task across mixed providers merely to increase throughput unless a future explicit routing contract defines the data policy for that split.
+Do not split one fixed-swarm private task across mixed providers. Per-assignment routing is defined only by the [adaptive worker swarm](adaptive-swarm.md), where every role independently passes through the same sensitivity policy.
 
 ## Failure semantics
 
@@ -76,7 +76,7 @@ Do not persist provider API keys in swarm artifacts. Treat model responses as po
 
 ## CLI
 
-Inspect the swarm without network calls:
+Inspect the fixed swarm without network calls:
 
 ```powershell
 python .agents/skills/mado-loop/scripts/worker_swarm.py plan --sensitivity private
@@ -113,4 +113,4 @@ Before using any swarm proposal:
 5. run the required proof gates and inspect actual output;
 6. record worker delegation in AI Creole only as a capability route/proposal source, never as proof.
 
-A swarm is useful when independent perspectives reduce blind spots. It is wasteful when the task is trivial, deterministic tooling already answers the question, or every worker would receive the same tiny request and produce redundant prose.
+A fixed swarm is useful when independent perspectives reduce blind spots and the role set is already clear. It is wasteful when the task is trivial, deterministic tooling already answers the question, or domain-driven adaptive composition would avoid redundant roles.
