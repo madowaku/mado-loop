@@ -12,7 +12,7 @@ Use this skill only when the user explicitly invokes `$mado-loop`. Turn a game-d
 Run **UNDERSTAND -> ROUTE -> MAKE -> INTEGRATE -> RUN -> INSPECT -> VERIFY -> FIX -> PROVE**. Repeat the run-through-fix segment while an in-scope, safe repair remains. Stop when the requested outcome is proven, an unresolved fact prevents an honest claim, or further action needs new authority.
 
 1. **UNDERSTAND:** inspect the project, request, constraints, existing changes, and proof target. Record facts that could invalidate the result as `unknowns`.
-2. **ROUTE:** run `python scripts/classify_task.py "<task>"` and use its schema-v1.1 `task_domains`. Read [routing architecture](references/routing/architecture.md) and [capability registry](references/routing/capability-registry.md), then load only references needed by the selected domains. Apply [source policy](references/routing/source-policy.md) before adopting external material. When a bounded model worker could reduce cost or parallelize analysis, read [worker provider router](references/routing/provider-router.md). When independent architecture, implementation, verification, or review proposals would reduce blind spots, also read [parallel worker swarm](references/routing/worker-swarm.md).
+2. **ROUTE:** run `python scripts/classify_task.py "<task>"` and use its schema-v1.1 `task_domains`. Read [routing architecture](references/routing/architecture.md) and [capability registry](references/routing/capability-registry.md), then load only references needed by the selected domains. Apply [source policy](references/routing/source-policy.md) before adopting external material. When a bounded model worker could reduce cost or parallelize analysis, read [worker provider router](references/routing/provider-router.md). When independent model proposals create leverage, choose between the [parallel worker swarm](references/routing/worker-swarm.md) for an explicitly known role set and the [adaptive worker swarm](references/routing/adaptive-swarm.md) when task domains should compose the smallest useful team automatically.
 3. **MAKE:** implement the smallest coherent change through the selected specialists and tools. Keep the orchestrator responsible for routing and acceptance, specialists responsible for domain guidance, engine/asset tools responsible for deterministic operations, optional worker providers responsible only for bounded proposals, and the proof system responsible for claims.
 4. **INTEGRATE:** connect code, scenes, resources, imports, UI, and gameplay in the user's project without taking ownership away from existing project structure. Worker majority vote is never an integration rule; choose from proposals using project facts and requested acceptance criteria.
 5. **RUN, INSPECT, VERIFY, FIX:** escalate evidence from the cheapest relevant proof level. Inspect actual output, repair observed defects, and rerun affected checks.
@@ -38,16 +38,21 @@ Worker models are optional execution lanes, not new authorities. Use them only f
 
 Use `scripts/provider_router.py` for one configured OpenAI-compatible worker. Keep provider and model separate: OpenRouter is the primary external worker hub, an explicitly enabled logged free endpoint may be used only for `public` payloads, and `secret` payloads require a configured local provider. Never silently weaken data handling, silently change a requested model, or send credentials and secret-bearing output to an external worker.
 
-Use `scripts/worker_swarm.py` when independent perspectives create concrete leverage. The default swarm runs `architect`, `implementer`, and `test_writer` concurrently, then runs a `reviewer` over the primary proposals. The runtime preserves deterministic role ordering, isolates individual worker failures, and always reports `proof_status: UNPROVEN` plus `integration_required: true`.
+Use `scripts/worker_swarm.py` when the role set is already known. Its default fixed swarm runs `architect`, `implementer`, and `test_writer` concurrently, then runs a `reviewer` over the primary proposals.
+
+Use `scripts/adaptive_swarm.py` when the task domains should determine the team. The adaptive planner is deterministic first-party code, not an LLM planner. It may compose `architect`, `recon`, `gameplay_specialist`, `ui_specialist`, `asset_specialist`, `implementer`, `test_writer`, and `release_auditor`, then optionally fan in through `reviewer`. Role-specific or tier-specific provider/model profiles may refine execution, but every assignment still passes through the provider sensitivity policy.
 
 For multi-worker execution:
 
-- keep primary workers read-only proposal generators unless a future explicit mutation contract says otherwise;
+- keep primary workers read-only proposal generators;
 - give every worker the same bounded task and only the repository context needed for that task;
+- never let model output recursively create new roles or workers;
 - never feed one primary worker another primary worker's answer before the fan-in review stage;
 - do not use worker majority vote as acceptance;
 - let the orchestrator choose, apply, and merge the smallest coherent change;
 - run normal P0-P5 proof after integration.
+
+Both fixed and adaptive swarm runtimes preserve deterministic role ordering, isolate individual worker failures, redact credentials, and always report `proof_status: UNPROVEN` plus `integration_required: true`.
 
 A trivial or deterministic task does not justify a swarm. Prefer the cheapest route that can produce independently checkable value.
 
