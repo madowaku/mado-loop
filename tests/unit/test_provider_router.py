@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-import importlib.util
 from pathlib import Path
+import sys
 import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-MODULE_PATH = ROOT / ".agents" / "skills" / "mado-loop" / "scripts" / "provider_router.py"
-SPEC = importlib.util.spec_from_file_location("mado_provider_router", MODULE_PATH)
-assert SPEC is not None and SPEC.loader is not None
-router = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(router)
+SCRIPT_DIR = ROOT / ".agents" / "skills" / "mado-loop" / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import provider_router as router  # noqa: E402
 
 
 class ProviderRouterTests(unittest.TestCase):
