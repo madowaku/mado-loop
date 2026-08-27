@@ -99,6 +99,15 @@ class ProviderRouterTests(unittest.TestCase):
         )
         self.assertEqual(selected.model, "override/model")
 
+    def test_auto_rejects_model_override(self) -> None:
+        with self.assertRaisesRegex(router.ProviderConfigError, "requires an explicit provider"):
+            router.select_provider(
+                provider="auto",
+                sensitivity="public",
+                model_override="ambiguous/model",
+                env={"OPENROUTER_API_KEY": "k", "MADO_OPENROUTER_MODEL": "default/model"},
+            )
+
     def test_empty_prompt_is_rejected(self) -> None:
         selected = router.WorkerProvider(
             name="local",
