@@ -1,6 +1,6 @@
 # P0-P5 Proof Ladder
 
-Use the lowest-cost evidence first and escalate only as far as the request and claim require. A higher level includes relevant lower-level gates; it does not erase their failures.
+Use the lowest-cost evidence first and escalate only as far as the request and claim require. A higher level includes relevant lower-level gates; it does not erase their failures. All escalation and repair is bounded by the active [runtime budgets](../protocol/runtime-budgets.md).
 
 ## Levels
 
@@ -15,4 +15,4 @@ Use the lowest-cost evidence first and escalate only as far as the request and c
 
 Choose the target level from the requested completion claim. Run P0 before expensive launches, P1 before interactive inspection, and P2 before P3-P5. Skip a level only when it is genuinely irrelevant and record why; a required skipped gate makes the result UNKNOWN.
 
-When a gate fails, preserve its evidence, repair the smallest attributable cause, then rerun that gate and every downstream gate invalidated by the repair. Stop when the target level passes, a required fact or dependency remains unknown, the same failure no longer has a safe in-scope repair, or the next step needs user authority.
+When a gate fails, preserve its evidence, repair the smallest attributable cause, then rerun that gate and every downstream gate invalidated by the repair. Reuse still-valid evidence rather than replaying unaffected gates. Stop when the target level passes, a required fact or dependency remains unknown, the same failure no longer has a safe in-scope repair, the Loop Budget blocks the next action, or the next step needs user authority. Budget exhaustion is reported as `UNKNOWN` unless another required check already establishes `FAIL`.

@@ -2,6 +2,17 @@
 
 このファイルはMADO LOOPの利用者向け変更点を記録します。日付は、ownerがrelease metadataを確定するまで付与しません。
 
+## 1.0.1
+
+Loop Budget + Context Budget hardeningを追加しました。
+
+- 1 invocationあたりのrepair cycle、同一failure repair、同一file reversal、同一asset regeneration、full-video inspectionに既定上限を追加
+- active MADO LOOPからのnested `$mado-loop` invocationを禁止
+- budget超過時は自動延長せず、required `orchestrator.loop_budget` checkを`UNKNOWN`として停止
+- userが明示した場合のみ、そのinvocationに限って特定budgetを引き上げ可能。MADO LOOP自身によるreset/raiseは禁止
+- token usageを観測できないhostでは推測値を作らず、progressive disclosure、raw-log抑制、AI Creole checkpointによるContext Budgetを適用
+- deterministicな`BudgetPolicy` / `BudgetLedger`とunit testを追加
+
 ## 1.0.0
 
 Production release candidateとして、以下を実装しました。
