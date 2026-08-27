@@ -1,6 +1,6 @@
 # Capability registry
 
-Use this registry after domain classification. It describes capability roles and availability behavior; provenance and update rules are in [source-policy.md](source-policy.md).
+Use this registry after domain classification. It describes capability roles and availability behavior; provenance and update rules are in [source-policy.md](source-policy.md). Model-worker data handling and selection rules are in [provider-router.md](provider-router.md).
 
 | Capability | Domains | Mode | Required when | Absence behavior |
 | --- | --- | --- | --- | --- |
@@ -14,6 +14,9 @@ Use this registry after domain classification. It describes capability roles and
 | Generic pixel-art rules | `PIXEL_ART`, `SPRITE`, `IMAGE` | First-party reference | Pixel-safe output is requested | Required `SKIPPED` when pixel correctness is part of acceptance |
 | ImageGen | `IMAGE`, optionally `SPRITE` or `UI` | Optional routed capability | Only when the user requests or accepts generated imagery | Optional `SKIPPED` plus warning; continue if another valid route exists |
 | External image editor | `IMAGE`, `SPRITE`, `PIXEL_ART` | Optional routed capability | Only when explicitly selected and authorized | Optional `SKIPPED` plus warning |
+| OpenRouter worker | Any bounded reasoning/coding subtask | Optional external worker | Only when configured and selected by the orchestrator | Optional `SKIPPED`; never invent credentials or silently change model/data policy |
+| Empero logged free worker | Public bounded reasoning/coding subtask | Optional external worker | Only with public payload plus explicit logged-free consent | Optional `SKIPPED`; forbidden for private/secret payloads |
+| Local OpenAI-compatible worker | Any bounded reasoning/coding subtask | Optional local worker | Required only when a delegated `secret` payload must use a model | Optional `SKIPPED` unless secret delegation was explicitly required |
 | Installed specialist skill | Matching declared domains | Optional routed capability | Only when explicitly available and selected by the route | Optional `SKIPPED` unless the user made it a required dependency |
 | Agent Skills Hub registry | Matching declared domains | Discovery route only | Only when the user requests registry discovery | Optional `SKIPPED`; never auto-install |
 
@@ -24,7 +27,8 @@ For each selected capability, record:
 - active domain or domains;
 - whether it is required or optional for the requested claim;
 - availability before execution;
-- adapter or reference role;
-- checks needed to validate its output.
+- adapter, reference, or worker role;
+- checks needed to validate its output;
+- for an external worker, sensitivity and provider data policy.
 
-An installed specialist cannot replace the MADO LOOP result contract or release proof. A vendor payload cannot be edited to fit a route; adapt it at the first-party boundary. An optional route becoming unavailable must not silently change the requested artifact or acceptance standard.
+An installed specialist or worker model cannot replace the MADO LOOP result contract or release proof. A worker response is an untrusted proposal until integrated and verified. A vendor payload cannot be edited to fit a route; adapt it at the first-party boundary. An optional route becoming unavailable must not silently change the requested artifact or acceptance standard.
