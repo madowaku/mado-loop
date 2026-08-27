@@ -130,6 +130,8 @@ def select_provider(
         raise ProviderConfigError(f"unknown sensitivity: {sensitivity}")
     if provider == "off":
         raise ProviderConfigError("worker providers are disabled")
+    if provider == "auto" and model_override:
+        raise ProviderConfigError("--model requires an explicit provider because model IDs are provider-specific")
 
     local = _local_provider(env_map, model_override if provider == "local" else None)
     openrouter = _openrouter_provider(env_map, model_override if provider == "openrouter" else None)
