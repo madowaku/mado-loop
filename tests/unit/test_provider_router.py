@@ -37,6 +37,58 @@ class ProviderRouterTests(unittest.TestCase):
         payload = router.build_chat_request(selected, prompt="Review this bounded patch")
         self.assertEqual(payload["provider"], {"data_collection": "deny", "zdr": True})
 
+    def test_nvidia_public_provider_uses_official_hosted_endpoint(self) -> None:
+        selected = router.select_provider(
+            provider="nvidia",
+            sensitivity="public",
+            env={"NVIDIA_API_KEY": "nvapi-test", "MADO_NVIDIA_MODEL": "vendor/model"},
+        )
+        self.assertEqual(selected.name, "nvidia")
+        self.assertEqual(selected.base_url, router.NVIDIA_NIM_BASE_URL)
+        self.assertEqual(selected.model, "vendor/model")
+        self.assertNotIn("api_key", selected.public_dict())
+
+    def test_nvidia_private_requires_explicit_consent(self) -> None:
+        with self.assertRaisesRegex(router.ProviderConfigError, "allow-nvidia-private"):
+            router.select_provider(
+                provider="nvidia",
+                sensitivity="private",
+                env={"NVIDIA_API_KEY": "nvapi-test", "MADO_NVIDIA_MODEL": "vendor/model"},
+            )
+
+    def test_nvidia_private_can_be_explicitly_allowed(self) -> None:
+        selected = router.select_provider(
+            provider="nvidia",
+            sensitivity="private",
+            allow_nvidia_private=True,
+            env={"NVIDIA_API_KEY": "nvapi-test", "MADO_NVIDIA_MODEL": "vendor/model"},
+        )
+        self.assertEqual(selected.name, "nvidia")
+
+    def test_public_prefer_free_prefers_configured_nvidia_before_logged_free(self) -> None:
+        candidates = router.provider_candidates(
+            sensitivity="public",
+            prefer_free=True,
+            allow_logged_free=True,
+            env={"NVIDIA_API_KEY": "nvapi-test", "MADO_NVIDIA_MODEL": "vendor/model"},
+        )
+        self.assertEqual([candidate.name for candidate in candidates[:2]], ["nvidia", "empero"])
+
+    def test_private_candidate_order_preserves_openrouter_then_nvidia_then_local(self) -> None:
+        candidates = router.provider_candidates(
+            sensitivity="private",
+            allow_nvidia_private=True,
+            env={
+                "OPENROUTER_API_KEY": "k",
+                "MADO_OPENROUTER_MODEL": "example/model",
+                "NVIDIA_API_KEY": "nvapi-test",
+                "MADO_NVIDIA_MODEL": "vendor/model",
+                "MADO_LOCAL_BASE_URL": "http://127.0.0.1:1234/v1",
+                "MADO_LOCAL_MODEL": "local-model",
+            },
+        )
+        self.assertEqual([candidate.name for candidate in candidates], ["openrouter", "nvidia", "local"])
+
     def test_empero_requires_public_sensitivity(self) -> None:
         with self.assertRaisesRegex(router.ProviderConfigError, "restricted to public"):
             router.select_provider(
@@ -50,7 +102,7 @@ class ProviderRouterTests(unittest.TestCase):
         with self.assertRaisesRegex(router.ProviderConfigError, "allow-logged-free"):
             router.select_provider(provider="empero", sensitivity="public", env={})
 
-    def test_public_prefer_free_uses_empero_only_after_consent(self) -> None:
+    def test_public_prefer_free_uses_empero_only_after_consent_when_nvidia_missing(self) -> None:
         selected = router.select_provider(
             sensitivity="public",
             prefer_free=True,
@@ -88,6 +140,14 @@ class ProviderRouterTests(unittest.TestCase):
                 provider="openrouter",
                 sensitivity="secret",
                 env={"OPENROUTER_API_KEY": "k", "MADO_OPENROUTER_MODEL": "example/model"},
+            )
+
+    def test_explicit_nvidia_rejects_secret(self) -> None:
+        with self.assertRaisesRegex(router.ProviderConfigError, "may not use external"):
+            router.select_provider(
+                provider="nvidia",
+                sensitivity="secret",
+                env={"NVIDIA_API_KEY": "nvapi-test", "MADO_NVIDIA_MODEL": "vendor/model"},
             )
 
     def test_model_override_is_scoped_to_explicit_provider(self) -> None:
