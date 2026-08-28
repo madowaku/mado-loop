@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+- NVIDIA NIM hosted endpointをoptional worker providerとして追加。`NVIDIA_API_KEY` + `MADO_NVIDIA_MODEL` でOpenAI-compatible `/chat/completions` laneを利用可能にし、model IDを固定せず変動するhosted catalogをconfigurationとして扱う
+- provider routerにdeterministic `fallback_candidates` を追加。候補は同一sensitivity policyを満たすrouteだけに限定し、public `--prefer-free` ではconfigured NVIDIA NIMをlogged-free Emperoより先に候補化
+- NVIDIA hosted routeはpublicを既定とし、private payloadは `--allow-nvidia-private` / `MADO_ALLOW_NVIDIA_PRIVATE=1` の明示opt-inを要求、secret payloadは引き続きlocal-only
 - `skill_registry.yaml` と `scripts/select_skills.py` を追加し、task domainと明示トリガーからオンデマンド専門Skillを決定的に推薦するrouting layerを追加
 - 専門Skillは自動インストールせず、実際に利用可能なものだけをロードし、既存のfirst-party reference/vendor fallbackとMADO LOOP proof authorityを維持
 - bounded task receiptに、実際に開いた・呼び出した専門Skillだけを `skills_used` として記録するprovenance contractを追加
