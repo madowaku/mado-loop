@@ -1,7 +1,7 @@
 """Route bounded MADO LOOP worker tasks to explicitly configured model providers.
 
 This module is intentionally stdlib-only. It never installs clients, persists API
-keys, or enables a logged free endpoint without explicit consent.
+keys, or weakens data-handling policy without explicit consent.
 """
 
 from __future__ import annotations
@@ -17,11 +17,12 @@ from urllib import error, request
 
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+NVIDIA_NIM_BASE_URL = "https://integrate.api.nvidia.com/v1"
 EMPERO_BASE_URL = "https://free.empero.org/v1"
 EMPERO_DEFAULT_MODEL = "free"
 TRUE_VALUES = {"1", "true", "yes", "on"}
 SENSITIVITIES = ("public", "private", "secret")
-PROVIDER_NAMES = ("auto", "openrouter", "empero", "local", "off")
+PROVIDER_NAMES = ("auto", "openrouter", "nvidia", "empero", "local", "off")
 
 
 class ProviderConfigError(ValueError):
@@ -93,6 +94,22 @@ def _openrouter_provider(env: Mapping[str, str], model_override: str | None = No
     )
 
 
+def _nvidia_provider(env: Mapping[str, str], model_override: str | None = None) -> WorkerProvider | None:
+    api_key = _value(env, "NVIDIA_API_KEY") or _value(env, "MADO_NVIDIA_API_KEY")
+    model = model_override or _value(env, "MADO_NVIDIA_MODEL")
+    if not api_key or not model:
+        return None
+    return WorkerProvider(
+        name="nvidia",
+        base_url=(_value(env, "MADO_NVIDIA_BASE_URL") or NVIDIA_NIM_BASE_URL).rstrip("/"),
+        model=model,
+        api_key=api_key,
+        external=True,
+        logs_content=False,
+        privacy_mode="hosted-external;private-requires-explicit-consent",
+    )
+
+
 def _empero_provider(
     env: Mapping[str, str],
     *,
@@ -113,12 +130,59 @@ def _empero_provider(
     )
 
 
+def _private_nvidia_allowed(env: Mapping[str, str], explicit: bool) -> bool:
+    return explicit or _truthy(_value(env, "MADO_ALLOW_NVIDIA_PRIVATE"))
+
+
+def provider_candidates(
+    *,
+    sensitivity: str = "private",
+    prefer_free: bool = False,
+    allow_logged_free: bool = False,
+    allow_nvidia_private: bool = False,
+    env: Mapping[str, str] | None = None,
+) -> tuple[WorkerProvider, ...]:
+    """Return permitted auto-route candidates in deterministic fallback order."""
+    env_map = os.environ if env is None else env
+    if sensitivity not in SENSITIVITIES:
+        raise ProviderConfigError(f"unknown sensitivity: {sensitivity}")
+
+    local = _local_provider(env_map)
+    openrouter = _openrouter_provider(env_map)
+    nvidia = _nvidia_provider(env_map)
+    empero = _empero_provider(env_map, allow_logged_free=allow_logged_free)
+    nvidia_private = _private_nvidia_allowed(env_map, allow_nvidia_private)
+
+    if sensitivity == "secret":
+        return (local,) if local is not None else ()
+
+    candidates: list[WorkerProvider] = []
+    if sensitivity == "public" and prefer_free:
+        if nvidia is not None:
+            candidates.append(nvidia)
+        if empero is not None:
+            candidates.append(empero)
+    if openrouter is not None:
+        candidates.append(openrouter)
+    if sensitivity == "private" and nvidia is not None and nvidia_private:
+        candidates.append(nvidia)
+    if local is not None:
+        candidates.append(local)
+    if sensitivity == "public":
+        if nvidia is not None and nvidia not in candidates:
+            candidates.append(nvidia)
+        if empero is not None and empero not in candidates:
+            candidates.append(empero)
+    return tuple(candidates)
+
+
 def select_provider(
     *,
     provider: str = "auto",
     sensitivity: str = "private",
     prefer_free: bool = False,
     allow_logged_free: bool = False,
+    allow_nvidia_private: bool = False,
     model_override: str | None = None,
     env: Mapping[str, str] | None = None,
 ) -> WorkerProvider:
@@ -135,6 +199,7 @@ def select_provider(
 
     local = _local_provider(env_map, model_override if provider == "local" else None)
     openrouter = _openrouter_provider(env_map, model_override if provider == "openrouter" else None)
+    nvidia = _nvidia_provider(env_map, model_override if provider == "nvidia" else None)
     empero = _empero_provider(
         env_map,
         model_override=model_override if provider == "empero" else None,
@@ -151,6 +216,16 @@ def select_provider(
         if openrouter is None:
             raise ProviderConfigError("OpenRouter requires OPENROUTER_API_KEY and MADO_OPENROUTER_MODEL")
         return openrouter
+    if provider == "nvidia":
+        if sensitivity == "secret":
+            raise ProviderConfigError("secret tasks may not use external providers")
+        if sensitivity == "private" and not _private_nvidia_allowed(env_map, allow_nvidia_private):
+            raise ProviderConfigError(
+                "NVIDIA NIM private tasks require --allow-nvidia-private or MADO_ALLOW_NVIDIA_PRIVATE=1"
+            )
+        if nvidia is None:
+            raise ProviderConfigError("NVIDIA NIM requires NVIDIA_API_KEY and MADO_NVIDIA_MODEL")
+        return nvidia
     if provider == "empero":
         if sensitivity != "public":
             raise ProviderConfigError("Empero free is restricted to public tasks because prompts and completions are logged")
@@ -158,22 +233,19 @@ def select_provider(
             raise ProviderConfigError("Empero free requires --allow-logged-free or MADO_ALLOW_LOGGED_FREE=1")
         return empero
 
-    # auto: never invent credentials, never downgrade privacy silently.
+    candidates = provider_candidates(
+        sensitivity=sensitivity,
+        prefer_free=prefer_free,
+        allow_logged_free=allow_logged_free,
+        allow_nvidia_private=allow_nvidia_private,
+        env=env_map,
+    )
+    if candidates:
+        return candidates[0]
     if sensitivity == "secret":
-        if local is not None:
-            return local
         raise ProviderConfigError("secret task requires a configured local provider")
-
-    if sensitivity == "public" and prefer_free and empero is not None:
-        return empero
-    if openrouter is not None:
-        return openrouter
-    if local is not None:
-        return local
-    if sensitivity == "public" and empero is not None:
-        return empero
     raise ProviderConfigError(
-        "no permitted worker provider is configured; set OpenRouter, local provider, or explicitly allow Empero for public work"
+        "no permitted worker provider is configured; set OpenRouter, NVIDIA NIM, local provider, or explicitly allow Empero for public work"
     )
 
 
@@ -282,6 +354,7 @@ def _add_selection_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--model", dest="model_override")
     parser.add_argument("--prefer-free", action="store_true")
     parser.add_argument("--allow-logged-free", action="store_true")
+    parser.add_argument("--allow-nvidia-private", action="store_true")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -311,10 +384,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             sensitivity=args.sensitivity,
             prefer_free=args.prefer_free,
             allow_logged_free=args.allow_logged_free,
+            allow_nvidia_private=args.allow_nvidia_private,
             model_override=args.model_override,
         )
         if args.command == "plan":
-            payload = {"status": "PASS", "selected": selected.public_dict()}
+            candidates = provider_candidates(
+                sensitivity=args.sensitivity,
+                prefer_free=args.prefer_free,
+                allow_logged_free=args.allow_logged_free,
+                allow_nvidia_private=args.allow_nvidia_private,
+            ) if args.provider == "auto" else (selected,)
+            payload = {
+                "status": "PASS",
+                "selected": selected.public_dict(),
+                "fallback_candidates": [candidate.public_dict() for candidate in candidates],
+            }
         else:
             prompt = _read_prompt(args)
             result = call_provider(
