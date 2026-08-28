@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "policy": {
+    "auto_install": false,
+    "load_only_selected": true,
+    "max_auto_selected": 4,
+    "receipt_key": "skills_used"
+  },
+  "skills": [
+    {
+      "id": "godot-ui-control",
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "scope": "godot",
+      "mode": "on_demand",
+      "priority": 100,
+      "domains": ["UI", "REFERENCE_TO_UI"],
+      "always_for_domains": true,
+      "allow_trigger_without_domain": false,
+      "triggers": ["control", "container", "theme", "canvaslayer", "safe area", "focus", "hud", "menu", "ui", "画面", "メニュー", "セーフエリア", "フォーカス"],
+      "fallbacks": ["references/production/game-ui.md"]
+    },
+    {
+      "id": "game-ui-ux",
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "scope": "godot",
+      "mode": "on_demand",
+      "priority": 95,
+      "domains": ["UI", "REFERENCE_TO_UI"],
+      "always_for_domains": true,
+      "allow_trigger_without_domain": false,
+      "triggers": ["hud", "menu", "responsive", "safe area", "accessibility", "focus", "input", "ui", "画面", "メニュー", "入力", "アクセシビリティ"],
+      "fallbacks": ["references/production/game-ui.md", "references/production/image-to-game-ui.md"]
+    },
+    {
+      "id": "godot-gdscript",
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "scope": "godot",
+      "mode": "on_demand",
+      "priority": 90,
+      "domains": ["CODE"],
+      "always_for_domains": false,
+      "allow_trigger_without_domain": false,
+      "triggers": ["gdscript", "script", "refactor", "bug", "code", "スクリプト", "リファクタ", "バグ", "コード"],
+      "fallbacks": ["vendor/godot-skill/payload/references/gdscript_conventions.md"]
+    },
+    {
+      "id": "godot-nodes-scenes",
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "scope": "godot",
+      "mode": "on_demand",
+      "priority": 90,
+      "domains": ["CODE", "GAMEPLAY", "UI", "ASSET_INTEGRATION"],
+      "always_for_domains": false,
+      "allow_trigger_without_domain": true,
+      "triggers": ["scene", "node", "tscn", "resource", "シーン", "ノード", "リソース"],
+      "fallbacks": ["vendor/godot-skill/payload/references/tscn_format.md", "vendor/godot-skill/payload/references/authoring_recipes.md"]
+    },
+    {
+      "id": "game-feel",
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "scope": "godot",
+      "mode": "on_demand",
+      "priority": 90,
+      "domains": ["GAMEPLAY", "ANIMATION", "UI"],
+      "always_for_domains": false,
+      "allow_trigger_without_domain": true,
+      "triggers": ["game feel", "juice", "feedback", "hit stop", "hitstop", "screen shake", "impact", "squash", "stretch", "tween", "手触り", "気持ち", "演出", "ヒットストップ", "画面揺れ", "揺れ", "フィードバック"],
+      "fallbacks": ["vendor/godot-skill/payload/references/tween.md", "vendor/godot-skill/payload/references/vfx_2d.md"]
+    },
+    {
+      "id": "puzzle",
+      "source": "gamedev-skills/awesome-gamedev-agent-skills",
+      "scope": "godot",
+      "mode": "on_demand",
+      "priority": 88,
+      "domains": ["GAMEPLAY", "CODE"],
+      "always_for_domains": false,
+      "allow_trigger_without_domain": true,
+      "triggers": ["puzzle", "solvability", "undo", "hint", "level generation", "difficulty curve", "パズル", "解ける", "詰み", "アンドゥ", "ヒント", "難易度", "盤面生成"],
+      "fallbacks": []
+    },
+    {
+      "id": "multiplayer-game",
+      "source": "rivet-dev/skills",
+      "scope": "godot-adjacent",
+      "mode": "on_demand",
+      "priority": 85,
+      "domains": ["GAMEPLAY", "CODE"],
+      "always_for_domains": false,
+      "allow_trigger_without_domain": true,
+      "triggers": ["multiplayer", "matchmaking", "server authoritative", "client prediction", "network sync", "online co-op", "オンライン", "マルチプレイ", "同期", "マッチメイキング"],
+      "fallbacks": []
+    },
+    {
+      "id": "oss-librarian",
+      "source": "local-installed-skill",
+      "scope": "research",
+      "mode": "on_demand",
+      "priority": 80,
+      "domains": ["CODE", "GAMEPLAY", "ASSET_INTEGRATION"],
+      "always_for_domains": false,
+      "allow_trigger_without_domain": true,
+      "triggers": ["oss", "open source", "github", "library", "existing implementation", "ライブラリ", "既存実装", "オープンソース", "github"],
+      "fallbacks": ["references/routing/source-policy.md"]
+    },
+    {
+      "id": "game-design-theory",
+      "source": "installed-specialist",
+      "scope": "design-review",
+      "mode": "on_demand",
+      "priority": 70,
+      "domains": ["GAMEPLAY"],
+      "always_for_domains": false,
+      "allow_trigger_without_domain": true,
+      "triggers": ["mda", "flow", "reward", "balance", "player psychology", "dominant strategy", "ゲームデザイン", "報酬", "バランス", "支配戦略", "プレイヤー心理"],
+      "fallbacks": []
+    },
+    {
+      "id": "develop-web-game",
+      "source": "openai/skills",
+      "scope": "web",
+      "mode": "manual_only",
+      "priority": 100,
+      "domains": [],
+      "always_for_domains": false,
+      "allow_trigger_without_domain": false,
+      "triggers": ["web game", "browser game", "playwright", "ブラウザゲーム"],
+      "fallbacks": []
+    },
+    {
+      "id": "threejs-game-ui-designer",
+      "source": "majidmanzarpour/threejs-game-skills",
+      "scope": "web-threejs",
+      "mode": "manual_only",
+      "priority": 90,
+      "domains": [],
+      "always_for_domains": false,
+      "allow_trigger_without_domain": false,
+      "triggers": ["three.js", "threejs"],
+      "fallbacks": []
+    },
+    {
+      "id": "higgsfield-game-generation",
+      "source": "higgsfield-ai/skills",
+      "scope": "web-generation",
+      "mode": "manual_only",
+      "priority": 80,
+      "domains": [],
+      "always_for_domains": false,
+      "allow_trigger_without_domain": false,
+      "triggers": ["higgsfield"],
+      "fallbacks": []
+    }
+  ]
+}
