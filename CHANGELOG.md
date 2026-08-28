@@ -2,6 +2,13 @@
 
 このファイルはMADO LOOPの利用者向け変更点を記録します。日付は、ownerがrelease metadataを確定するまで付与しません。
 
+## Unreleased
+
+- `skill_registry.yaml` と `scripts/select_skills.py` を追加し、task domainと明示トリガーからオンデマンド専門Skillを決定的に推薦するrouting layerを追加
+- 専門Skillは自動インストールせず、実際に利用可能なものだけをロードし、既存のfirst-party reference/vendor fallbackとMADO LOOP proof authorityを維持
+- bounded task receiptに、実際に開いた・呼び出した専門Skillだけを `skills_used` として記録するprovenance contractを追加
+- Web専用の `develop-web-game` / Three.js / Higgsfield系は `manual_only` とし、Godot中心のMADO LOOP 1.xが暗黙にruntime scopeを広げないよう固定
+
 ## 1.0.0
 
 Production release candidateとして、以下を実装しました。
