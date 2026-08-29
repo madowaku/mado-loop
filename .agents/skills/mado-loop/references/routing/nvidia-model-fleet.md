@@ -22,10 +22,28 @@ The model IDs are deliberately isolated in `scripts/nvidia_fleet.py`. NVIDIA Bui
 
 - Kimi K3 is the broad architect/specialist lane because NVIDIA Build describes it for long-horizon software engineering, agentic knowledge work, multimodal understanding, reasoning, and tool use.
 - DeepSeek V4 Pro 0813 is the coding lane because NVIDIA Build describes it for text generation, reasoning, coding, and agentic tool-use workflows with a 1M-token context.
-- Nemotron 3.5 Lightning is the fast lane because NVIDIA Build positions it as the fastest 30B A3B MoE model for specialized agentic tasks.
-- Nemotron 3 Ultra is reserved for reviewer/release-audit work because NVIDIA Build positions it for frontier reasoning, complex agentic workflows, long-context analysis, tool use, and high-accuracy code/math/science reasoning.
+- Nemotron 3.5 Lightning is the fast lane because NVIDIA Build positions it as a fast 30B A3B model for specialized agentic tasks.
+- Nemotron 3 Ultra is reserved for reviewer/release-audit work because NVIDIA Build positions it for frontier reasoning, complex agentic workflows, long-context analysis, tool use, and high-accuracy reasoning.
 
 These descriptions are selection rationale, not completion evidence. Worker output remains an untrusted proposal.
+
+## Request Profile Adapter
+
+Fleet execution goes through `scripts/nvidia_request_profiles.py` (`nvidia-request-profiles/v1`). The adapter selects model- and workload-aware request controls without putting model-specific branches into `provider_router.py` or `adaptive_swarm.py`.
+
+| Workload | Request profile | Main controls |
+| --- | --- | --- |
+| Kimi K3 architect | `kimi-k3-architect-max` | `temperature=1.0`, `reasoning_effort=max` |
+| Kimi K3 specialist | `kimi-k3-specialist-high` | `temperature=1.0`, `reasoning_effort=high` |
+| DeepSeek V4 Pro implementer | `deepseek-v4-pro-coding-max` | `temperature=1.0`, `reasoning_effort=max` |
+| Lightning recon | `nemotron-lightning-recon-fast` | `temperature=1.0`, bounded reasoning budget |
+| Lightning verification | `nemotron-lightning-verification` | `temperature=1.0`, larger bounded reasoning budget |
+| Ultra reviewer | `nemotron-ultra-review-high` | `temperature=1.0`, `reasoning_effort=high`, bounded reasoning budget |
+| Ultra release audit | `nemotron-ultra-release-high` | `temperature=1.0`, `reasoning_effort=high`, bounded reasoning budget |
+
+The fixed API capabilities and limits come from the current NVIDIA NIM API contract. The workload-specific reasoning-budget fractions are MADO LOOP tuning policy, not NVIDIA-published recommendations. Budgets are capped and never consume more than half of the requested completion ceiling, preserving room for the final answer. If the caller explicitly sets `temperature`, that explicit value wins as long as it is valid for the NVIDIA endpoint.
+
+The adapter also clamps `max_tokens` to the current model endpoint maximum to avoid preventable 422 responses. Unknown future NVIDIA models fall back to the generic OpenAI-compatible request without invented reasoning fields.
 
 ## Data boundary
 
@@ -64,6 +82,8 @@ python .agents/skills/mado-loop/scripts/nvidia_fleet.py run `
   --output .mado/nvidia-swarm-result.json
 ```
 
+The fleet runtime defaults to an 8192-token completion ceiling. Per-model endpoint caps and workload reasoning budgets are applied below that ceiling. Override `--max-tokens` or `--temperature` only when the task needs it; explicit values remain bounded by the provider API contract.
+
 For intentionally private unpublished project material, opt in explicitly:
 
 ```powershell
@@ -75,17 +95,14 @@ python .agents/skills/mado-loop/scripts/nvidia_fleet.py plan `
 
 Prefer `--task-file` and `--context-file` for substantial inputs. Never commit the NVIDIA API key.
 
-## Parameter policy
-
-The wrapper currently defaults worker temperature to `1.0`, matching the current NVIDIA Build prototype examples for the curated models. This is a fleet-level default, not a permanent model-specific tuning contract. Future per-model reasoning budgets, thinking controls, and sampling parameters should be implemented through a generic request-options adapter rather than by adding model-specific branches to the core orchestrator.
-
 ## Update policy
 
-Before changing the fleet:
+Before changing the fleet or request profiles:
 
-1. Confirm the replacement model is currently available on the NVIDIA hosted endpoint.
+1. Confirm the replacement model and request parameters are currently available on the NVIDIA hosted endpoint.
 2. Preserve the role intent rather than chasing benchmark rank alone.
-3. Update `PROFILE_NAME` when the composition materially changes.
-4. Update unit tests for deterministic role/model routing.
-5. Do not weaken public/private/secret boundaries to keep a model available.
-6. Treat deprecation or quota failure as a provider/model availability issue, never as permission to silently route secret data externally.
+3. Update `PROFILE_NAME` when the model composition materially changes; update the request-adapter version when its behavior contract changes materially.
+4. Update unit tests for deterministic role/model routing and request parameter construction.
+5. Keep NVIDIA-published API limits distinct from MADO LOOP tuning choices.
+6. Do not weaken public/private/secret boundaries to keep a model available.
+7. Treat deprecation, quota failure, or a rejected parameter as availability/configuration evidence, never as permission to silently route secret data externally.
