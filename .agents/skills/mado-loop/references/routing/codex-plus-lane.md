@@ -8,24 +8,26 @@ The native lane is not an OpenAI API provider. It invokes the installed `codex` 
 
 The Codex CLI's actual account limit and reset information remains authoritative. Check `/status` in an interactive Codex session or the ChatGPT usage dashboard. MADO LOOP's local ledger records token usage and a credit-equivalent pacing estimate, but it must never claim that estimate is the account's true remaining Plus quota.
 
-## Seven-day operating policy
+## Reset-aware operating policy
 
-The default policy is designed to stretch the included allowance across a full week:
+Do not assume the allowance must last seven days. The reset horizon can be shorter than a week, and temporary model promotions can change effective burn. The controller therefore targets the **next observed reset** and adapts from actual remaining-percentage movement.
 
 - keep the current **Sol Medium parent session** as orchestrator, architecture owner, integrator, reviewer, and acceptance authority;
 - do not spawn Sol for work the parent can do in the current context;
-- use **Luna xhigh** for bounded implementation and focused specialist proposals;
+- use **Luna xhigh** for bounded implementation and focused specialist proposals by default;
 - use **Luna high** for reconnaissance and routine test/proof proposals;
-- spawn at most **two Luna workers** for one task in normal mode;
-- reduce to **one Luna worker** when the guardrail enters `conserve` or `critical` mode;
-- never auto-upgrade to Luna `max`;
-- allow Luna `max` only as an explicit `bounded_retry` after xhigh failed while scope and acceptance criteria remain clear;
+- spawn at most **two Luna workers** in `normal` or `aggressive` burn state;
+- reduce to **one Luna worker** when the controller enters `conserve` or `critical` mode;
+- allow xhigh roles such as `implementer`, focused specialists, and `release_auditor` to auto-promote to **Luna max** only when observed burn leaves substantial headroom at the next reset;
+- do not promote routine `recon` or `test_writer` work to max merely because headroom exists;
+- if observed burn accelerates, remove the automatic max recommendation and downshift through xhigh/high/medium as appropriate;
+- never hard-code a temporary Luna Max discount or promotion multiplier; infer the practical effect from account-status burn instead;
 - prefer deterministic tools or the existing Sol parent over an unnecessary worker call;
-- use the NVIDIA fleet as an external second opinion or overflow lane when appropriate rather than spending Plus allowance on redundant model calls.
+- use the NVIDIA fleet as an external second opinion or overflow lane when independent model diversity is useful.
 
-This is a pacing policy, not a guarantee that a plan will last exactly seven days. ChatGPT-plan allowance is dynamic and actual consumption depends on context size, reasoning, tool calls, caching, and model behavior.
+This is a feedback controller, not a guarantee that a plan will last to a specific clock time. ChatGPT-plan allowance is dynamic and actual consumption depends on context size, reasoning, tool calls, caching, model behavior, and account-side promotions.
 
-## Local pacing ledger
+## Local usage ledger
 
 `scripts/codex_plus_lane.py` consumes `codex exec --json` events and stores only non-secret metadata:
 
@@ -34,7 +36,7 @@ This is a pacing policy, not a guarantee that a plan will last exactly seven day
 - model and reasoning effort;
 - duration;
 - input, cached input, output, and reasoning-output token counts;
-- a credit-equivalent estimate based on the current GPT-5.6 Codex rate card.
+- a credit-equivalent estimate based on the configured GPT-5.6 reference rate card.
 
 It never stores the prompt, model response, ChatGPT credentials, or API keys in the usage ledger.
 
@@ -44,59 +46,68 @@ Default ledger:
 .mado-loop/codex-plus/usage.jsonl
 ```
 
-Inspect the local pace without a model call:
+Inspect the local telemetry without a model call:
 
 ```powershell
 python .agents/skills/mado-loop/scripts/codex_plus_lane.py status
 ```
 
-An optional user-defined weekly guardrail can be supplied with `--weekly-budget-credits` or `MADO_CODEX_PLUS_WEEKLY_CREDITS`. This value is a pacing target only and must not be described as the Plus plan's official quota.
+An optional user-defined weekly guardrail can still be supplied with `--weekly-budget-credits` or `MADO_CODEX_PLUS_WEEKLY_CREDITS`. It is a legacy/fallback pacing target only. When a fresh account-status observation exists, the reset-aware account controller is authoritative for the swarm mode.
 
 ## Calibrate from actual account status
 
-Because the included allowance is dynamic, prefer a coarse manual calibration from the account's real weekly status instead of inventing a fixed Plus quota. Read the weekly remaining percentage and reset time from Codex `/status` or the ChatGPT usage dashboard, then sync them locally:
+Read the remaining percentage and reset horizon from Codex `/status` or the ChatGPT usage dashboard, then append a local observation:
 
 ```powershell
 python .agents/skills/mado-loop/scripts/codex_plus_budget.py sync `
   --remaining-percent 72 `
-  --hours-until-reset 120
+  --hours-until-reset 36
 ```
 
-The observation is stored at:
+Run the same command again later with the new values. The controller compares observations from the **same absolute reset window**, learns the recent percentage burn per hour, and projects how much allowance would remain at reset if that rate continued.
+
+The observation history is stored at:
 
 ```text
 .mado-loop/codex-plus/status.json
 ```
 
-Only remaining percentage, observation time, and reset time are stored. The file contains no prompt, response, credential, or account identifier.
+Only remaining percentage, observation time, and reset time are stored. The file contains no prompt, response, credential, account identifier, or API key. The last 32 coarse observations are retained; burn-rate estimation uses the recent 24-hour portion of the current reset window.
 
-Inspect the calibration:
+Inspect the controller:
 
 ```powershell
 python .agents/skills/mado-loop/scripts/codex_plus_budget.py status
 ```
 
-The governor compares actual remaining weekly percentage with the fraction of the seven-day window still remaining. Roughly on pace stays `normal`; materially below even pace enters `conserve`; far below pace enters `critical`. An expired observation is ignored until refreshed. When the local credit-equivalent ledger and account-status calibration disagree, the **stricter** mode wins.
+The controller returns two related fields:
+
+- `burn_state`: `aggressive`, `normal`, `conserve`, or `critical`;
+- `mode`: the execution safety mode consumed by the swarm, where `aggressive` maps to normal concurrency but can permit automatic Luna Max for xhigh roles.
+
+The main signals are observed burn rate, sustainable burn rate to the next reset while keeping a small reserve, and projected remaining percentage at reset. A large projected surplus enters `aggressive`; a rate that would consume the reserve enters `conserve`; likely pre-reset exhaustion enters `critical`.
+
+When the displayed reset time changes materially, observations from the old reset window are not used to calculate the new burn rate. This naturally handles early/manual reset events without assuming a seven-day cycle.
 
 ## Role profile
 
-| Role | Native model | Effort | Execution owner |
-| --- | --- | --- | --- |
-| `orchestrator` | Sol | `medium` | current parent |
-| `architect` | Sol | `medium` | current parent |
-| `reviewer` | Sol | `medium` | current parent |
-| `recon` | Luna | `high` | spawned worker |
-| gameplay/UI/asset specialist | Luna | `xhigh` | spawned worker |
-| `implementer` | Luna | `xhigh` | spawned worker |
-| `test_writer` | Luna | `high` | spawned worker |
-| `release_auditor` | Luna | `xhigh` | spawned worker |
-| `bounded_retry` | Luna | `max` only when explicit | spawned worker |
+| Role | Native model | Default effort | Aggressive/headroom behavior | Execution owner |
+| --- | --- | --- | --- | --- |
+| `orchestrator` | Sol | `medium` | unchanged | current parent |
+| `architect` | Sol | `medium` | unchanged | current parent |
+| `reviewer` | Sol | `medium` | unchanged | current parent |
+| `recon` | Luna | `high` | stays `high` | spawned worker |
+| gameplay/UI/asset specialist | Luna | `xhigh` | may promote to `max` | spawned worker |
+| `implementer` | Luna | `xhigh` | may promote to `max` | spawned worker |
+| `test_writer` | Luna | `high` | stays `high` | spawned worker |
+| `release_auditor` | Luna | `xhigh` | may promote to `max` | spawned worker |
+| `bounded_retry` | Luna | explicit lane profile | not automatically spawned by swarm | spawned worker |
 
-Budget pressure downshifts Luna before it spends another high-reasoning call. Parent-owned Sol work stays in the parent instead of creating duplicate Sol sessions.
+Under conserve/critical pressure Luna downshifts before another expensive reasoning call. Parent-owned Sol work stays in the parent instead of creating duplicate Sol sessions.
 
 ## Planning and execution
 
-Inspect one role without calling a model:
+Inspect one standalone role without calling a model:
 
 ```powershell
 python .agents/skills/mado-loop/scripts/codex_plus_lane.py plan `
@@ -115,9 +126,9 @@ python .agents/skills/mado-loop/scripts/codex_plus_lane.py run `
 
 The lane uses `codex exec --json --ephemeral --sandbox read-only` and passes the selected model and `model_reasoning_effort`. Workers are proposal-only and do not receive mutation or proof authority.
 
-## Subscription-efficient adaptive swarm
+## Reset-aware adaptive swarm
 
-`scripts/codex_plus_swarm.py` reuses the existing deterministic adaptive role classifier, but only spawns the highest-leverage Luna roles that fit the current budget mode. Architect and reviewer responsibilities remain with the Sol parent. The swarm reads both the content-free usage ledger and the optional account-status calibration automatically.
+`scripts/codex_plus_swarm.py` reuses the existing deterministic adaptive role classifier, but only spawns the highest-leverage Luna roles that fit the current account mode. Architect and reviewer responsibilities remain with the Sol parent. The swarm reads both the content-free usage ledger and the optional account-status history automatically.
 
 Plan without calls:
 
@@ -126,6 +137,8 @@ python .agents/skills/mado-loop/scripts/codex_plus_swarm.py plan `
   --sensitivity private `
   --task "HUD UI architectureを整理して実装と検証まで設計して"
 ```
+
+The plan exposes `burn_state`, `max_recommended`, and the chosen effort for each worker. Automatic max is never inferred from API price alone; it requires reset-aware headroom.
 
 Run the selected Luna workers:
 
@@ -142,7 +155,7 @@ The result always returns `proof_status: UNPROVEN` and `integration_required: tr
 
 - `secret` work remains local-only and is rejected by this hosted subscription lane.
 - Do not pass credentials or secret-bearing output into spawned workers.
-- Do not persist prompt or completion content in the usage ledger.
+- Do not persist prompt or completion content in the usage ledger or status history.
 - Do not bypass the Codex sandbox or approval system from this lane.
 - Do not interpret model self-evaluation or worker majority as acceptance.
-- Do not auto-retry failed workers with a more expensive effort level.
+- Do not auto-retry failed workers just because max is currently recommended; failure handling remains an explicit orchestration decision.
