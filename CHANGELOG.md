@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- NVIDIA adaptive fleet profile `nvidia-balanced-2026-08` を追加し、Kimi K3 / DeepSeek V4 Pro / Nemotron 3.5 Lightning / Nemotron 3 Ultraをreasoning・specialist・coding・verification・review/release-auditへ役割分担
+- `nvidia-request-profiles/v1` を追加し、Kimi / DeepSeek / Nemotronごとの `reasoning_effort`、bounded `reasoning_budget`、temperature、model別 `max_tokens` capをfleet実行時に自動適用。明示temperature overrideとpublic/private/secret境界は維持
 - NVIDIA NIM hosted endpointをoptional worker providerとして追加。`NVIDIA_API_KEY` + `MADO_NVIDIA_MODEL` でOpenAI-compatible `/chat/completions` laneを利用可能にし、model IDを固定せず変動するhosted catalogをconfigurationとして扱う
 - provider routerにdeterministic `fallback_candidates` を追加。候補は同一sensitivity policyを満たすrouteだけに限定し、public `--prefer-free` ではconfigured NVIDIA NIMをlogged-free Emperoより先に候補化
 - NVIDIA hosted routeはpublicを既定とし、private payloadは `--allow-nvidia-private` / `MADO_ALLOW_NVIDIA_PRIVATE=1` の明示opt-inを要求、secret payloadは引き続きlocal-only
