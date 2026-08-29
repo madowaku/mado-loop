@@ -46,6 +46,18 @@ MODEL_RATIONALE = {
     "nvidia/nemotron-3-ultra-550b-a55b": "deep adversarial review, release audit and high-complexity reasoning",
 }
 
+RESULT_WORKLOADS = {
+    "architect": "architect",
+    "recon": "recon",
+    "gameplay_specialist": "specialist",
+    "ui_specialist": "specialist",
+    "asset_specialist": "specialist",
+    "implementer": "implementer",
+    "test_writer": "test_writer",
+    "release_auditor": "release_auditor",
+    "reviewer": "reviewer",
+}
+
 
 class NvidiaFleetConfigError(ValueError):
     """Raised when the NVIDIA fleet cannot be configured safely."""
@@ -100,6 +112,34 @@ def profile_public_dict() -> dict[str, object]:
     }
 
 
+def _annotate_result_profile(item: dict[str, object] | None) -> None:
+    if not item:
+        return
+    role = str(item.get("role") or "")
+    provider = item.get("provider")
+    if not isinstance(provider, dict):
+        return
+    model = provider.get("model")
+    if not isinstance(model, str):
+        return
+    profile = nvidia_request_profiles.resolve_profile(
+        model,
+        workload=RESULT_WORKLOADS.get(role, "default"),
+    )
+    item["request_profile"] = profile.public_dict() if profile else None
+
+
+def _annotate_result_profiles(result: dict[str, object]) -> None:
+    primary = result.get("primary_results")
+    if isinstance(primary, list):
+        for item in primary:
+            if isinstance(item, dict):
+                _annotate_result_profile(item)
+    review_result = result.get("review_result")
+    if isinstance(review_result, dict):
+        _annotate_result_profile(review_result)
+
+
 def plan_fleet(
     *,
     task: str,
@@ -149,6 +189,7 @@ def run_fleet(
         env=routed_env,
         caller=caller,
     )
+    _annotate_result_profiles(result)
     return {"profile": PROFILE_NAME, "request_profile_adapter": REQUEST_PROFILE_ADAPTER, **result}
 
 
