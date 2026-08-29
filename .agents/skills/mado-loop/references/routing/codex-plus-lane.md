@@ -17,7 +17,7 @@ The default policy is designed to stretch the included allowance across a full w
 - use **Luna xhigh** for bounded implementation and focused specialist proposals;
 - use **Luna high** for reconnaissance and routine test/proof proposals;
 - spawn at most **two Luna workers** for one task in normal mode;
-- reduce to **one Luna worker** when the local guardrail enters `conserve` or `critical` mode;
+- reduce to **one Luna worker** when the guardrail enters `conserve` or `critical` mode;
 - never auto-upgrade to Luna `max`;
 - allow Luna `max` only as an explicit `bounded_retry` after xhigh failed while scope and acceptance criteria remain clear;
 - prefer deterministic tools or the existing Sol parent over an unnecessary worker call;
@@ -51,6 +51,32 @@ python .agents/skills/mado-loop/scripts/codex_plus_lane.py status
 ```
 
 An optional user-defined weekly guardrail can be supplied with `--weekly-budget-credits` or `MADO_CODEX_PLUS_WEEKLY_CREDITS`. This value is a pacing target only and must not be described as the Plus plan's official quota.
+
+## Calibrate from actual account status
+
+Because the included allowance is dynamic, prefer a coarse manual calibration from the account's real weekly status instead of inventing a fixed Plus quota. Read the weekly remaining percentage and reset time from Codex `/status` or the ChatGPT usage dashboard, then sync them locally:
+
+```powershell
+python .agents/skills/mado-loop/scripts/codex_plus_budget.py sync `
+  --remaining-percent 72 `
+  --hours-until-reset 120
+```
+
+The observation is stored at:
+
+```text
+.mado-loop/codex-plus/status.json
+```
+
+Only remaining percentage, observation time, and reset time are stored. The file contains no prompt, response, credential, or account identifier.
+
+Inspect the calibration:
+
+```powershell
+python .agents/skills/mado-loop/scripts/codex_plus_budget.py status
+```
+
+The governor compares actual remaining weekly percentage with the fraction of the seven-day window still remaining. Roughly on pace stays `normal`; materially below even pace enters `conserve`; far below pace enters `critical`. An expired observation is ignored until refreshed. When the local credit-equivalent ledger and account-status calibration disagree, the **stricter** mode wins.
 
 ## Role profile
 
@@ -91,7 +117,7 @@ The lane uses `codex exec --json --ephemeral --sandbox read-only` and passes the
 
 ## Subscription-efficient adaptive swarm
 
-`scripts/codex_plus_swarm.py` reuses the existing deterministic adaptive role classifier, but only spawns the highest-leverage Luna roles that fit the current budget mode. Architect and reviewer responsibilities remain with the Sol parent.
+`scripts/codex_plus_swarm.py` reuses the existing deterministic adaptive role classifier, but only spawns the highest-leverage Luna roles that fit the current budget mode. Architect and reviewer responsibilities remain with the Sol parent. The swarm reads both the content-free usage ledger and the optional account-status calibration automatically.
 
 Plan without calls:
 
