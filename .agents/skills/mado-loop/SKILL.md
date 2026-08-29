@@ -42,6 +42,8 @@ Use `scripts/worker_swarm.py` when the role set is already known. Its default fi
 
 Use `scripts/adaptive_swarm.py` when the task domains should determine the team. The adaptive planner is deterministic first-party code, not an LLM planner. It may compose `architect`, `recon`, `gameplay_specialist`, `ui_specialist`, `asset_specialist`, `implementer`, `test_writer`, and `release_auditor`, then optionally fan in through `reviewer`. Role-specific or tier-specific provider/model profiles may refine execution, but every assignment still passes through the provider sensitivity policy.
 
+Use `scripts/nvidia_fleet_benchmark.py` when the curated NVIDIA fleet itself needs an empirical role-fit check. The benchmark runs Kimi K3 (`architect`), DeepSeek V4 Pro (`implementer`), and Nemotron 3.5 Lightning (`test_writer`) concurrently, then fans their proposals into Nemotron 3 Ultra (`reviewer`). It records per-call request profiles, latency, provider token usage when available, JSON output-contract compliance, and reviewer-assigned role-quality scores. Treat reviewer scores as model-graded tuning signals only: they are not independent ground truth, do not grant mutation authority, and never substitute for P0-P5 proof. Benchmark public or synthetic tasks by default; do not use secret payloads with hosted NVIDIA endpoints.
+
 For multi-worker execution:
 
 - keep primary workers read-only proposal generators;
