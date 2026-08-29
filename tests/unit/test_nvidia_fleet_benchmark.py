@@ -109,7 +109,10 @@ class NvidiaFleetBenchmarkTests(unittest.TestCase):
             self.assertEqual(usage["completion_tokens"], 50)
             self.assertEqual(usage["reasoning_tokens"], 20)
             self.assertEqual(usage["total_tokens"], 150)
-            self.assertIsInstance(usage["completion_tokens_per_second"], float)
+            if item["duration_ms"] > 0:
+                self.assertIsInstance(usage["completion_tokens_per_second"], float)
+            else:
+                self.assertIsNone(usage["completion_tokens_per_second"])
 
     def test_secret_is_never_exposed(self) -> None:
         report = benchmark.run_benchmark(env=NVIDIA_ENV, caller=self.fake_caller)
