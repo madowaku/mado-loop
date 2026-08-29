@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+- `budget_governor_v2.py` を追加し、OpenRouter Hy3 free / NVIDIA fleet / explicit logged-free / local / Codex Plus LunaをPlus reset pressureとrole qualityで横断routing。selected lane障害時は同じsensitivity policy内の候補へdeterministic automatic fallbackを実行し、worker出力は引き続きproposal-only / `proof_status: UNPROVEN`
+- OpenRouter `tencent/hy3-preview:free` をzero-priced bounded worker laneとしてBudget Governor 2.0から利用可能にし、recon/testでは通常時からfree-first、conserve/critical時はimplementation/specialistでもPlusより前へ昇格可能。OpenRouterの既存 `data_collection=deny,zdr=true` policyは維持
+- Tencent Hy4 previewのWorkBuddy/CodeBuddy launch promotionはmanual advisory laneとして登録。2026-08-28 launchから2週間という公式告知をconservative cutoffで扱うが、WorkBuddy product entitlementをAPI entitlementへ変換せず、paid Hy4 API fallbackは既定で無効
+- Budget Governor 2.0にcontent-free execution ledgerを追加し、role/lane/provider/model/cost class/status/duration/token metadataのみ保存。prompt/completion/credential/API keyは保存しない
 - ChatGPT-plan認証済みCodex CLIをAPIキーなしで再利用する `codex_plus_lane.py` を追加。Sol Mediumをparent orchestrator / architect / reviewerとして温存し、Luna xhighをbounded implementation/specialist、Luna highをrecon/testへ割り当て
 - Codex Plus pacingをfixed 7-day policyからnext-reset feedback controllerへ更新。Codex `/status` / ChatGPT usage dashboardのcoarse履歴から同一reset windowのremaining-percent burnを学習し、early/manual resetでreset時刻が変わった場合は旧windowのburn historyを持ち越さない
 - Luna Maxをhard-coded discountではなくobserved headroomで自動昇格可能に変更。`aggressive` burn stateではxhighのimplementer/specialist/release auditをMaxへ昇格でき、burn加速時はxhigh/highへ自動downshift。recon/testはhighを維持し、actual Plus allowanceのauthorityはCodex `/status` / ChatGPT usage dashboardのまま維持
