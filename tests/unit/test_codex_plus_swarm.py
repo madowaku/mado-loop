@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 import sys
 import tempfile
@@ -11,6 +12,7 @@ SCRIPT_DIR = ROOT / ".agents" / "skills" / "mado-loop" / "scripts"
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+import codex_plus_budget as budget  # noqa: E402
 import codex_plus_lane as lane  # noqa: E402
 import codex_plus_swarm as swarm  # noqa: E402
 
@@ -21,6 +23,7 @@ class CodexPlusSwarmTests(unittest.TestCase):
             plan = swarm.plan_swarm(
                 task="codeを実装してテストも追加して",
                 ledger_path=Path(tmp) / "usage.jsonl",
+                status_path=Path(tmp) / "status.json",
                 env={},
             )
         roles = [item["role"] for item in plan["assignments"]]
@@ -35,6 +38,7 @@ class CodexPlusSwarmTests(unittest.TestCase):
             plan = swarm.plan_swarm(
                 task="HUD UI architectureを整理して実装と検証まで設計して",
                 ledger_path=Path(tmp) / "usage.jsonl",
+                status_path=Path(tmp) / "status.json",
                 env={},
             )
         roles = [item["role"] for item in plan["assignments"]]
@@ -49,10 +53,10 @@ class CodexPlusSwarmTests(unittest.TestCase):
             plan = swarm.plan_swarm(
                 task="release packagingとproofを監査して",
                 ledger_path=ledger,
+                status_path=Path(tmp) / "status.json",
                 weekly_budget_credits=1.0,
                 env={},
             )
-        # No prior usage means normal. Force policy function directly for the constrained selection contract.
         roles, _, _, _ = __import__("adaptive_swarm").choose_roles("release packagingとproofを監査して", ("RELEASE",))
         selected = swarm._select_spawn_roles(roles, domains=("RELEASE",), max_spawned=1)
         self.assertEqual(selected, ("release_auditor",))
@@ -68,6 +72,7 @@ class CodexPlusSwarmTests(unittest.TestCase):
             plan = swarm.plan_swarm(
                 task="codeを実装してテストも追加して",
                 ledger_path=ledger,
+                status_path=Path(tmp) / "status.json",
                 weekly_budget_credits=140.0,
                 env={},
             )
@@ -75,6 +80,26 @@ class CodexPlusSwarmTests(unittest.TestCase):
         self.assertEqual(plan["max_spawned_workers"], 1)
         self.assertEqual(len(plan["assignments"]), 1)
         self.assertEqual(plan["assignments"][0]["role"], "implementer")
+        self.assertEqual(plan["assignments"][0]["effort"], "high")
+
+    def test_account_status_calibration_can_force_critical_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            status_path = Path(tmp) / "status.json"
+            observation = budget.make_observation(
+                remaining_percent=40,
+                hours_until_reset=120,
+                now=datetime.now(timezone.utc),
+            )
+            budget.save_observation(status_path, observation)
+            plan = swarm.plan_swarm(
+                task="codeを実装してテストも追加して",
+                ledger_path=Path(tmp) / "usage.jsonl",
+                status_path=status_path,
+                env={},
+            )
+        self.assertEqual(plan["budget"]["account_status"]["mode"], "critical")
+        self.assertEqual(plan["budget"]["mode"], "critical")
+        self.assertEqual(plan["max_spawned_workers"], 1)
         self.assertEqual(plan["assignments"][0]["effort"], "high")
 
     def test_run_preserves_order_and_never_uses_max_automatically(self) -> None:
@@ -100,6 +125,7 @@ class CodexPlusSwarmTests(unittest.TestCase):
                 task="codeを実装してテストも追加して",
                 cwd=Path(tmp),
                 ledger_path=Path(tmp) / "usage.jsonl",
+                status_path=Path(tmp) / "status.json",
                 env={},
                 caller=fake_caller,
             )
@@ -116,6 +142,7 @@ class CodexPlusSwarmTests(unittest.TestCase):
                     task="secret codeを確認して",
                     sensitivity="secret",
                     ledger_path=Path(tmp) / "usage.jsonl",
+                    status_path=Path(tmp) / "status.json",
                     env={},
                 )
 
