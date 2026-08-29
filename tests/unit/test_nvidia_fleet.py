@@ -21,6 +21,7 @@ class NvidiaFleetTests(unittest.TestCase):
     def test_profile_routes_code_team_to_curated_models(self) -> None:
         plan = nvidia_fleet.plan_fleet(task="codeを実装して", env=NVIDIA_ENV)
         self.assertEqual(plan["profile"], nvidia_fleet.PROFILE_NAME)
+        self.assertEqual(plan["request_profile_adapter"], "nvidia-request-profiles/v1")
         by_role = {item["role"]: item for item in plan["assignments"]}
         self.assertEqual(by_role["implementer"]["provider"]["name"], "nvidia")
         self.assertEqual(
@@ -50,10 +51,10 @@ class NvidiaFleetTests(unittest.TestCase):
         )
 
     def test_reviewer_uses_ultra_after_fan_in(self) -> None:
-        seen: list[tuple[str, str]] = []
+        seen: list[tuple[str, str, int, float]] = []
 
-        def fake_caller(selected, *, prompt, system, **kwargs):
-            seen.append((system, selected.model))
+        def fake_caller(selected, *, prompt, system, max_tokens, temperature, **kwargs):
+            seen.append((system, selected.model, max_tokens, temperature))
             return {"content": "proposal", "usage": None}
 
         result = nvidia_fleet.run_fleet(
@@ -62,9 +63,18 @@ class NvidiaFleetTests(unittest.TestCase):
             caller=fake_caller,
         )
         self.assertEqual(result["status"], "PASS")
-        reviewer_models = [model for system, model in seen if "adversarial reviewer" in system]
+        self.assertEqual(result["request_profile_adapter"], "nvidia-request-profiles/v1")
+        reviewer_models = [model for system, model, _, _ in seen if "adversarial reviewer" in system]
         self.assertEqual(reviewer_models, ["nvidia/nemotron-3-ultra-550b-a55b"])
+        self.assertTrue(all(max_tokens == 8192 for _, _, max_tokens, _ in seen))
+        self.assertTrue(all(temperature == 1.0 for _, _, _, temperature in seen))
         self.assertEqual(result["proof_status"], "UNPROVEN")
+
+    def test_profile_command_exposes_request_profiles_without_credentials(self) -> None:
+        profile = nvidia_fleet.profile_public_dict()
+        self.assertEqual(profile["request_profile_adapter"], "nvidia-request-profiles/v1")
+        self.assertIn("kimi-k3-architect-max", profile["request_profiles"])
+        self.assertNotIn("api_key", str(profile))
 
     def test_private_requires_explicit_opt_in(self) -> None:
         with self.assertRaisesRegex(adaptive_swarm.AdaptiveSwarmConfigError, "private tasks require"):
