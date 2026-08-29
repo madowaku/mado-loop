@@ -5,8 +5,9 @@
 ## Unreleased
 
 - ChatGPT-plan認証済みCodex CLIをAPIキーなしで再利用する `codex_plus_lane.py` を追加。Sol Mediumをparent orchestrator / architect / reviewerとして温存し、Luna xhighをbounded implementation/specialist、Luna highをrecon/testへ割り当て
-- 7日運用を狙うsubscription pacing policyを追加。通常は最大2 Luna worker、conserve/criticalでは最大1 workerへ縮退し、Luna maxはexplicit `bounded_retry` 以外で自動利用しない。`codex exec --json` のtoken usageをcontent-free local ledgerへ記録し、実Plus残量はCodex `/status` / ChatGPT usage dashboardをauthorityとして維持
-- `codex_plus_swarm.py` を追加し、既存adaptive role classifierから最小の高leverage Luna teamだけを選択。architect/reviewer/integration/acceptance/P0-P5はSol parentに残し、worker failureから高コストreasoningへのsilent retryを禁止
+- Codex Plus pacingをfixed 7-day policyからnext-reset feedback controllerへ更新。Codex `/status` / ChatGPT usage dashboardのcoarse履歴から同一reset windowのremaining-percent burnを学習し、early/manual resetでreset時刻が変わった場合は旧windowのburn historyを持ち越さない
+- Luna Maxをhard-coded discountではなくobserved headroomで自動昇格可能に変更。`aggressive` burn stateではxhighのimplementer/specialist/release auditをMaxへ昇格でき、burn加速時はxhigh/highへ自動downshift。recon/testはhighを維持し、actual Plus allowanceのauthorityはCodex `/status` / ChatGPT usage dashboardのまま維持
+- `codex_plus_swarm.py` を追加し、既存adaptive role classifierから最小の高leverage Luna teamだけを選択。architect/reviewer/integration/acceptance/P0-P5はSol parentに残し、通常/headroom時は最大2 worker、conserve/criticalでは最大1 workerへ縮退。worker failureからreasoning effortへのsilent retryは引き続き禁止
 - NVIDIA adaptive fleet profile `nvidia-balanced-2026-08` を追加し、Kimi K3 / DeepSeek V4 Pro / Nemotron 3.5 Lightning / Nemotron 3 Ultraをreasoning・specialist・coding・verification・review/release-auditへ役割分担
 - `nvidia-request-profiles/v1` を追加し、Kimi / DeepSeek / Nemotronごとの `reasoning_effort`、bounded `reasoning_budget`、temperature、model別 `max_tokens` capをfleet実行時に自動適用。明示temperature overrideとpublic/private/secret境界は維持
 - NVIDIA NIM hosted endpointをoptional worker providerとして追加。`NVIDIA_API_KEY` + `MADO_NVIDIA_MODEL` でOpenAI-compatible `/chat/completions` laneを利用可能にし、model IDを固定せず変動するhosted catalogをconfigurationとして扱う
@@ -33,7 +34,7 @@ Production release candidateとして、以下を実装しました。
 - AI Creole handoff、FIELD NOTES policy、project safety、completion contract
 - vendor payloadとlicenseを含む、payload-only・ZIP Slip防御付き・byte-reproducible package
 - Windows PowerShell 5.1 / PowerShell 7対応のtransactional install、reinstall、upgrade、明示downgrade、rollback、ownership-safe uninstall
-- Windows / Ubuntu向けGitHub Actions定義。routing、unit、sprite、Godot integration、P0–P5、package、install、licenseを必須gateとし、成功時だけartifactを公開
+- Windows / Ubuntu向けGitHub Actions定義。routing、unit、sprite、Godot integration、P0-P5、package、install、licenseを必須gateとし、成功時だけartifactを公開
 - third-party attributionと固定upstream commitの記録
 
 ### Evidence and limitations

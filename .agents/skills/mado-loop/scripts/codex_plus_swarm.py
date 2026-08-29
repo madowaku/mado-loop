@@ -1,9 +1,11 @@
-"""Plan and run a subscription-efficient Codex-native MADO LOOP worker team.
+"""Plan and run a reset-aware Codex-native MADO LOOP worker team.
 
-The parent Codex session remains the Sol Medium orchestrator. This module only
-spawns the smallest useful set of bounded Luna workers through `codex exec`.
-It never spawns a reviewer automatically, never applies worker changes, and
-never upgrades to Luna max without an explicit separate retry.
+The parent Codex session remains the Sol Medium orchestrator. This module spawns
+only the smallest useful set of bounded Luna workers through `codex exec`.
+Account `/status` observations are authoritative for reset pacing when present.
+When measured burn leaves substantial headroom at the next reset, xhigh Luna
+roles may be promoted to max automatically; if burn accelerates, they fall back
+to xhigh/high without assuming a fixed promotion discount.
 """
 
 from __future__ import annotations
@@ -117,14 +119,45 @@ def _budget(
     account = codex_plus_budget.calibrated_pressure(
         codex_plus_budget.load_observation(status_path)
     )
-    mode = codex_plus_budget.stricter_mode(str(ledger["mode"]), str(account["mode"]))
+
+    # `/status` is the account-level signal and wins when calibrated. The old
+    # credit-equivalent ledger remains useful telemetry/fallback, not a claim
+    # about actual plan allowance.
+    if bool(account.get("calibrated")):
+        mode = str(account["mode"])
+        mode_source = "account-status-reset-controller"
+    else:
+        mode = str(ledger["mode"])
+        mode_source = "local-ledger-fallback"
+
     return {
         **ledger,
         "mode": mode,
-        "ledger_mode": ledger["mode"],
+        "mode_source": mode_source,
+        "legacy_ledger_mode": ledger["mode"],
         "account_status": account,
+        "burn_state": account.get("burn_state", "normal"),
+        "max_recommended": bool(account.get("max_recommended", False)) and mode == "normal",
         "status_file": str(status_path),
     }
+
+
+def _profile_for_role(role: str, *, budget: Mapping[str, object]) -> codex_plus_lane.NativeProfile:
+    mode = str(budget["mode"])
+    profile = codex_plus_lane.choose_profile(role, budget_mode=mode)
+    if (
+        bool(budget.get("max_recommended"))
+        and profile.model == codex_plus_lane.LUNA_MODEL
+        and profile.effort == "xhigh"
+    ):
+        return codex_plus_lane.NativeProfile(
+            role=profile.role,
+            model=profile.model,
+            effort="max",
+            owner=profile.owner,
+            rationale=profile.rationale + "; reset-aware headroom permits Luna max",
+        )
+    return profile
 
 
 def plan_swarm(
@@ -157,7 +190,7 @@ def plan_swarm(
     cap = max_spawned_for_mode(mode)
     spawn_roles = _select_spawn_roles(roles, domains=domains, max_spawned=cap)
     assignments = [
-        codex_plus_lane.choose_profile(role, budget_mode=mode).public_dict()
+        _profile_for_role(role, budget=budget).public_dict()
         for role in spawn_roles
     ]
 
@@ -167,6 +200,7 @@ def plan_swarm(
     if review:
         parent_responsibilities.append("reviewer")
     omitted = [role for role in roles if role not in spawn_roles and role != "architect"]
+    automatic_max = any(item.get("effort") == "max" for item in assignments)
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -185,7 +219,8 @@ def plan_swarm(
         },
         "omitted_worker_roles": omitted,
         "review_required": review,
-        "max_is_automatic": False,
+        "max_is_automatic": automatic_max,
+        "max_policy": "automatic only when reset-aware observed burn leaves headroom",
         "subscription_auth": "Codex CLI existing ChatGPT sign-in",
         "api_key_required": False,
         "proof_status": "UNPROVEN",
@@ -228,9 +263,9 @@ def run_swarm(
         weekly_budget_credits=weekly_budget_credits,
         env=env,
     )
-    mode = str(plan["budget"]["mode"])
+    budget = plan["budget"]
     profiles = [
-        codex_plus_lane.choose_profile(str(item["role"]), budget_mode=mode)
+        _profile_for_role(str(item["role"]), budget=budget)
         for item in plan["assignments"]
     ]
     results_by_role: dict[str, codex_plus_lane.CodexCallResult] = {}
@@ -282,6 +317,7 @@ def run_swarm(
     else:
         transport = "FAIL"
 
+    automatic_max = any(profile.effort == "max" for profile in profiles)
     return {
         **plan,
         "status": transport,
@@ -289,7 +325,7 @@ def run_swarm(
         "parent_handoff": {
             "instruction": "Sol Medium parent must inspect proposals, fill omitted perspectives, integrate deliberately, and run normal P0-P5 proof.",
             "automatic_retry": False,
-            "automatic_luna_max": False,
+            "automatic_luna_max": automatic_max,
         },
         "proof_status": "UNPROVEN",
         "integration_required": True,
