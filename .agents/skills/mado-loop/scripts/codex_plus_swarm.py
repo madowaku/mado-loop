@@ -21,6 +21,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import adaptive_swarm  # noqa: E402
+import codex_plus_budget  # noqa: E402
 import codex_plus_lane  # noqa: E402
 
 
@@ -76,7 +77,6 @@ def max_spawned_for_mode(mode: str) -> int:
 
 
 def _priority_for_domains(domains: Sequence[str]) -> tuple[str, ...]:
-    # Release audits should not spend the only slot on generic test generation.
     if "RELEASE" in domains:
         return (
             "release_auditor",
@@ -105,14 +105,26 @@ def _select_spawn_roles(
 def _budget(
     *,
     ledger_path: Path,
+    status_path: Path,
     weekly_budget_credits: float | None,
     env: Mapping[str, str],
 ) -> dict[str, object]:
     configured = codex_plus_lane._weekly_budget(env, weekly_budget_credits)
-    return codex_plus_lane.budget_summary(
+    ledger = codex_plus_lane.budget_summary(
         ledger=codex_plus_lane.load_ledger(ledger_path),
         weekly_budget_credits=configured,
     )
+    account = codex_plus_budget.calibrated_pressure(
+        codex_plus_budget.load_observation(status_path)
+    )
+    mode = codex_plus_budget.stricter_mode(str(ledger["mode"]), str(account["mode"]))
+    return {
+        **ledger,
+        "mode": mode,
+        "ledger_mode": ledger["mode"],
+        "account_status": account,
+        "status_file": str(status_path),
+    }
 
 
 def plan_swarm(
@@ -121,6 +133,7 @@ def plan_swarm(
     context: str = "",
     sensitivity: str = "private",
     ledger_path: Path = codex_plus_lane.DEFAULT_LEDGER,
+    status_path: Path = codex_plus_budget.DEFAULT_STATUS_PATH,
     weekly_budget_credits: float | None = None,
     env: Mapping[str, str] | None = None,
 ) -> dict[str, object]:
@@ -136,6 +149,7 @@ def plan_swarm(
     roles, review, complexity_score, reasons = adaptive_swarm.choose_roles(task_text, domains)
     budget = _budget(
         ledger_path=ledger_path,
+        status_path=status_path,
         weekly_budget_credits=weekly_budget_credits,
         env=env_map,
     )
@@ -197,6 +211,7 @@ def run_swarm(
     sensitivity: str = "private",
     cwd: Path = Path("."),
     ledger_path: Path = codex_plus_lane.DEFAULT_LEDGER,
+    status_path: Path = codex_plus_budget.DEFAULT_STATUS_PATH,
     weekly_budget_credits: float | None = None,
     timeout: float = 300.0,
     env: Mapping[str, str] | None = None,
@@ -209,6 +224,7 @@ def run_swarm(
         context=context_text,
         sensitivity=sensitivity,
         ledger_path=ledger_path,
+        status_path=status_path,
         weekly_budget_credits=weekly_budget_credits,
         env=env,
     )
@@ -239,7 +255,7 @@ def run_swarm(
                 role = futures[future]
                 try:
                     result = future.result()
-                except Exception as exc:  # worker failures stay isolated
+                except Exception as exc:
                     profile = next(profile for profile in profiles if profile.role == role)
                     result = codex_plus_lane.CodexCallResult(
                         status="ERROR",
@@ -297,6 +313,7 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("--context-file")
         command.add_argument("--sensitivity", default="private", choices=codex_plus_lane.SENSITIVITIES)
         command.add_argument("--ledger")
+        command.add_argument("--status-file")
         command.add_argument("--weekly-budget-credits", type=float)
         if name == "run":
             command.add_argument("--cwd", default=".")
@@ -310,12 +327,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         task = args.task if args.task is not None else _read_optional(args.task_file)
         context = _read_optional(args.context_file)
         ledger = Path(args.ledger) if args.ledger else codex_plus_lane.DEFAULT_LEDGER
+        status_path = Path(args.status_file) if args.status_file else codex_plus_budget.DEFAULT_STATUS_PATH
         if args.command == "plan":
             payload = plan_swarm(
                 task=task,
                 context=context,
                 sensitivity=args.sensitivity,
                 ledger_path=ledger,
+                status_path=status_path,
                 weekly_budget_credits=args.weekly_budget_credits,
             )
         else:
@@ -325,12 +344,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 sensitivity=args.sensitivity,
                 cwd=Path(args.cwd),
                 ledger_path=ledger,
+                status_path=status_path,
                 weekly_budget_credits=args.weekly_budget_credits,
                 timeout=args.timeout,
             )
         print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
         return 0 if payload["status"] in {"PASS", "WARN"} else 2
-    except (CodexPlusSwarmConfigError, codex_plus_lane.CodexPlusConfigError, OSError) as exc:
+    except (
+        CodexPlusSwarmConfigError,
+        codex_plus_lane.CodexPlusConfigError,
+        codex_plus_budget.CodexPlusBudgetError,
+        OSError,
+    ) as exc:
         print(json.dumps({"schema_version": SCHEMA_VERSION, "status": "FAIL", "error": str(exc)}))
         return 2
 
