@@ -19,10 +19,12 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import adaptive_swarm  # noqa: E402
+import nvidia_request_profiles  # noqa: E402
 
 
 PROFILE_NAME = "nvidia-balanced-2026-08"
 PROFILE_UPDATED = "2026-08-29"
+REQUEST_PROFILE_ADAPTER = "nvidia-request-profiles/v1"
 
 TIER_MODELS = {
     "reasoning": "moonshotai/kimi-k3",
@@ -78,6 +80,10 @@ def profile_env(
 
 
 def profile_public_dict() -> dict[str, object]:
+    request_profiles = sorted(
+        {profile.name for profile in nvidia_request_profiles.PROFILES.values()}
+        | {profile.name for profile in nvidia_request_profiles.MODEL_DEFAULTS.values()}
+    )
     return {
         "profile": PROFILE_NAME,
         "updated": PROFILE_UPDATED,
@@ -87,6 +93,8 @@ def profile_public_dict() -> dict[str, object]:
         "tier_models": dict(TIER_MODELS),
         "role_overrides": dict(ROLE_MODELS),
         "model_rationale": dict(MODEL_RATIONALE),
+        "request_profile_adapter": REQUEST_PROFILE_ADAPTER,
+        "request_profiles": request_profiles,
         "mutation_authority": "orchestrator-only",
         "proof_authority": "P0-P5 proof system",
     }
@@ -110,7 +118,7 @@ def plan_fleet(
         review=review,
         env=routed_env,
     )
-    return {"profile": PROFILE_NAME, **plan}
+    return {"profile": PROFILE_NAME, "request_profile_adapter": REQUEST_PROFILE_ADAPTER, **plan}
 
 
 def run_fleet(
@@ -121,11 +129,11 @@ def run_fleet(
     allow_nvidia_private: bool = False,
     max_workers: int = adaptive_swarm.DEFAULT_MAX_WORKERS,
     review: bool | None = None,
-    max_tokens: int = 4096,
+    max_tokens: int = 8192,
     temperature: float = 1.0,
     timeout: float = 120.0,
     env: Mapping[str, str] | None = None,
-    caller=adaptive_swarm.provider_router.call_provider,
+    caller=nvidia_request_profiles.call_profiled,
 ) -> dict[str, object]:
     routed_env = profile_env(env, allow_nvidia_private=allow_nvidia_private)
     result = adaptive_swarm.run_adaptive_swarm(
@@ -141,7 +149,7 @@ def run_fleet(
         env=routed_env,
         caller=caller,
     )
-    return {"profile": PROFILE_NAME, **result}
+    return {"profile": PROFILE_NAME, "request_profile_adapter": REQUEST_PROFILE_ADAPTER, **result}
 
 
 def _read_task(args: argparse.Namespace) -> str:
@@ -186,7 +194,7 @@ def _parser() -> argparse.ArgumentParser:
     run = sub.add_parser("run", help="run an adaptive swarm using the NVIDIA fleet")
     _add_common_args(run)
     run.add_argument("--context-file")
-    run.add_argument("--max-tokens", type=int, default=4096)
+    run.add_argument("--max-tokens", type=int, default=8192)
     run.add_argument("--temperature", type=float, default=1.0)
     run.add_argument("--timeout", type=float, default=120.0)
     run.add_argument("--output")
@@ -225,7 +233,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                     )
         sys.stdout.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
         return 0 if payload.get("status", "PASS") != "FAIL" else 3
-    except (NvidiaFleetConfigError, adaptive_swarm.AdaptiveSwarmConfigError, OSError) as exc:
+    except (
+        NvidiaFleetConfigError,
+        nvidia_request_profiles.NvidiaRequestProfileError,
+        adaptive_swarm.AdaptiveSwarmConfigError,
+        OSError,
+    ) as exc:
         sys.stderr.write(f"nvidia fleet configuration error: {exc}\n")
         return 2
     except Exception as exc:  # pragma: no cover
