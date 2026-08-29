@@ -68,6 +68,10 @@ class NvidiaFleetTests(unittest.TestCase):
         self.assertEqual(reviewer_models, ["nvidia/nemotron-3-ultra-550b-a55b"])
         self.assertTrue(all(max_tokens == 8192 for _, _, max_tokens, _ in seen))
         self.assertTrue(all(temperature == 1.0 for _, _, _, temperature in seen))
+        by_role = {item["role"]: item for item in result["primary_results"]}
+        self.assertEqual(by_role["implementer"]["request_profile"]["name"], "deepseek-v4-pro-coding-max")
+        self.assertEqual(by_role["test_writer"]["request_profile"]["name"], "nemotron-lightning-verification")
+        self.assertEqual(result["review_result"]["request_profile"]["name"], "nemotron-ultra-review-high")
         self.assertEqual(result["proof_status"], "UNPROVEN")
 
     def test_profile_command_exposes_request_profiles_without_credentials(self) -> None:
