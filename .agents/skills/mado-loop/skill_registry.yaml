@@ -4,7 +4,9 @@
     "auto_install": false,
     "load_only_selected": true,
     "max_auto_selected": 4,
-    "receipt_key": "skills_used"
+    "receipt_key": "skills_used",
+    "feedback_min_samples": 3,
+    "feedback_max_adjustment": 4
   },
   "skills": [
     {

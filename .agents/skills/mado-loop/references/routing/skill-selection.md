@@ -7,12 +7,13 @@ The machine-readable registry is [`../../skill_registry.yaml`](../../skill_regis
 ## Selection order
 
 1. Run `python scripts/classify_task.py "<task>"` to determine concrete task domains.
-2. Run `python scripts/select_skills.py "<task>"` to get deterministic specialist recommendations.
+2. Run `python scripts/select_skills.py "<task>"` to get deterministic specialist recommendations. When `.mado-loop/skill_stats.json` exists, the selector reads only that compact cache, not the raw feedback ledger.
 3. Exclude `manual_only` skills unless the user or orchestrator explicitly selects that route. Current web-only specialists stay manual because MADO LOOP 1.x is Godot-focused.
 4. Inspect the actual installed-skill inventory. Load only recommended skills that are available. Never install a skill automatically.
 5. If a selected skill is unavailable, use its registered first-party fallback when one exists. Otherwise continue without it unless the user made that skill a required dependency.
-6. Keep the smallest useful team. The registry caps automatic recommendations at four skills, ordered by priority then skill id.
+6. Keep the smallest useful team. The registry caps automatic recommendations at four skills. Semantic task matching creates candidates first; empirical feedback may only make a bounded priority adjustment among those candidates.
 7. Record only skills actually opened or invoked under `skills_used` in the final bounded MADO LOOP task receipt. A recommendation alone does not count as use.
+8. When project-local MADO metadata writes are permitted, record the final outcome with `scripts/record_skill_feedback.py`. The raw ledger remains content-free and the selector consumes only its aggregated cache on future routes.
 
 The Scout may propose specialist skills, but the MADO LOOP orchestrator owns the final route. Worker models cannot recursively add specialists. A Judge may independently use another installed specialist for review, but that skill must also be recorded in the final task receipt.
 
@@ -46,6 +47,27 @@ receipt:
       - references/production/gameplay-proof.md
 ```
 
+## Feedback loop
+
+The learning loop deliberately separates **evidence history** from **routing context**:
+
+- `.mado-loop/skill_feedback.jsonl` is an append-only, content-free ledger. Each event contains only a short opaque receipt id, final `PASS` / `WARN` / `UNKNOWN` / `FAIL`, canonical `skills_used`, repair-cycle count, and optional observed task-total token count.
+- `.mado-loop/skill_stats.json` is a compact aggregate cache containing per-skill use/outcome/rework counters plus token totals associated with tasks where that skill participated. Those token counters are correlational, not attribution to one skill.
+- Prompts, completions, summaries, source code, secrets, credentials, user data, and raw command logs must never enter the feedback ledger.
+- `record_skill_feedback.py` is idempotent by receipt id. Re-recording the exact same event is a no-op; a conflicting duplicate is rejected.
+- Feedback never creates a candidate skill. Task-domain and trigger rules still decide relevance first.
+- Feedback is ignored until the registry's `feedback_min_samples` threshold is reached, then applies at most `feedback_max_adjustment` priority points. This prevents one lucky or unlucky run from hijacking routing.
+- Outcome and repair cycles affect the bounded priority adjustment. Associated task token totals are collected for later normalized efficiency analysis but do not yet change ranking because raw token counts are not comparable across tasks of different complexity or multi-skill participation.
+- Missing feedback files are normal. MADO LOOP falls back to the static deterministic registry with no warning and no loss of proof authority.
+
+Example recording command after the final task receipt is known:
+
+```text
+python scripts/record_skill_feedback.py --receipt-id T123 --status PASS --skill game-feel --skill godot-gdscript --repair-cycles 1 --tokens 4200
+```
+
+Only pass `--tokens` when an actual provider/runtime counter is available. Never estimate token usage just to fill the field.
+
 ## Routing examples
 
 | Task | Typical specialist route |
@@ -63,4 +85,4 @@ receipt:
 
 ## Proof boundary
 
-A specialist recommendation is not evidence. A specialist response is not evidence. Only the normal MADO LOOP RUN → INSPECT → VERIFY → PROVE path establishes completion. `skills_used` is provenance for how the work was approached, not a substitute for checks, artifacts, proof level, or remaining unknowns.
+A specialist recommendation is not evidence. A specialist response is not evidence. A favorable historical score is not evidence. Only the normal MADO LOOP RUN → INSPECT → VERIFY → PROVE path establishes completion. `skills_used` is provenance for how the work was approached, and feedback stats are routing hints; neither substitutes for checks, artifacts, proof level, or remaining unknowns.
