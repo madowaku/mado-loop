@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -15,6 +16,8 @@ LEDGER_SCHEMA_VERSION = "1"
 STATS_SCHEMA_VERSION = "1"
 DEFAULT_LEDGER = Path(".mado-loop") / "skill_feedback.jsonl"
 DEFAULT_STATS = Path(".mado-loop") / "skill_stats.json"
+RECEIPT_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
+SKILL_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 
 
 def canonical_event(
@@ -27,13 +30,15 @@ def canonical_event(
 ) -> dict[str, Any]:
     """Build one content-free, deterministic feedback event."""
     normalized_id = str(receipt_id).strip()
-    if not normalized_id:
-        raise ValueError("receipt_id must not be empty")
+    if not RECEIPT_ID_RE.fullmatch(normalized_id):
+        raise ValueError("receipt_id must be a short opaque identifier")
     if status not in STATUSES:
         raise ValueError(f"invalid status: {status!r}")
     skills = sorted({str(value).strip() for value in skills_used if str(value).strip()})
     if not skills:
         raise ValueError("at least one actually used specialist skill is required")
+    if any(not SKILL_ID_RE.fullmatch(skill_id) for skill_id in skills):
+        raise ValueError("skills_used must contain canonical skill ids only")
     if repair_cycles < 0:
         raise ValueError("repair_cycles must be >= 0")
     if tokens is not None and tokens < 0:
@@ -162,7 +167,7 @@ def record_event(
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--receipt-id", required=True, help="stable bounded task receipt id")
+    parser.add_argument("--receipt-id", required=True, help="stable opaque bounded-task receipt id")
     parser.add_argument("--status", required=True, choices=STATUSES)
     parser.add_argument("--skill", action="append", required=True, dest="skills")
     parser.add_argument("--repair-cycles", type=int, default=0)
