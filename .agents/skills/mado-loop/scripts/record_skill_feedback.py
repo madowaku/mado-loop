@@ -106,16 +106,16 @@ def build_stats(events: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
                     "unknown": 0,
                     "fail": 0,
                     "repair_cycles_total": 0,
-                    "token_samples": 0,
-                    "tokens_total": 0,
+                    "associated_token_samples": 0,
+                    "associated_tokens_total": 0,
                 },
             )
             metrics["uses"] += 1
             metrics[status.casefold()] += 1
             metrics["repair_cycles_total"] += repairs
             if tokens is not None:
-                metrics["token_samples"] += 1
-                metrics["tokens_total"] += int(tokens)
+                metrics["associated_token_samples"] += 1
+                metrics["associated_tokens_total"] += int(tokens)
     return {
         "schema_version": STATS_SCHEMA_VERSION,
         "receipt_count": receipt_count,
@@ -171,7 +171,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--status", required=True, choices=STATUSES)
     parser.add_argument("--skill", action="append", required=True, dest="skills")
     parser.add_argument("--repair-cycles", type=int, default=0)
-    parser.add_argument("--tokens", type=int, default=None, help="observed total tokens when available")
+    parser.add_argument("--tokens", type=int, default=None, help="observed task total tokens when available")
     parser.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER)
     parser.add_argument("--stats", type=Path, default=DEFAULT_STATS)
     parser.add_argument("--pretty", action="store_true")
