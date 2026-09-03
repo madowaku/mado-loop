@@ -119,6 +119,22 @@ class OvpRuntimeTests(unittest.TestCase):
         self.assertEqual(accepted["status"], "PASS")
         self.assertEqual(ovp._load_manifest(self.repo, "KAN-001")["state"], "ACCEPTED")
 
+    def test_review_blocks_worker_head_change_after_receipt(self):
+        self.prepare()
+        workspace = self.mutate_and_commit()
+        self.receipt(workspace)
+        (workspace / "src" / "player.gd").write_text("speed = 3\n", encoding="utf-8")
+        git(workspace, "add", ".")
+        git(workspace, "commit", "-m", "post receipt tamper")
+        blocked = ovp.review_task(
+            repo=self.repo, task_id="KAN-001", decision="accept",
+            reason="tamper should block", inspected_diff=True,
+        )
+        self.assertEqual(blocked["status"], "FAIL")
+        by_id = {item["id"]: item for item in blocked["checks"]}
+        self.assertEqual(by_id["ovp.review.head_stable"]["status"], "FAIL")
+        self.assertEqual(ovp._load_manifest(self.repo, "KAN-001")["state"], "REVIEW_READY")
+
     def test_required_worker_check_failure_blocks_accept_but_allows_rework(self):
         self.prepare()
         workspace = self.mutate_and_commit()
@@ -159,6 +175,22 @@ class OvpRuntimeTests(unittest.TestCase):
         self.assertFalse(workspace.exists())
         self.assertEqual(git(self.repo, "show-ref", "--verify", "refs/heads/mado/ovp/KAN-001", check=False).returncode, 0)
 
+    def test_cleanup_refuses_dirty_rejected_worktree(self):
+        self.prepare()
+        workspace = self.mutate_and_commit()
+        self.receipt(workspace)
+        rejected = ovp.review_task(
+            repo=self.repo, task_id="KAN-001", decision="reject",
+            reason="not wanted", inspected_diff=True,
+        )
+        self.assertEqual(rejected["status"], "PASS")
+        (workspace / "src" / "player.gd").write_text("uncommitted\n", encoding="utf-8")
+        cleanup = ovp.cleanup_task(repo=self.repo, task_id="KAN-001")
+        self.assertEqual(cleanup["status"], "FAIL")
+        self.assertTrue(workspace.exists())
+        by_id = {item["id"]: item for item in cleanup["checks"]}
+        self.assertEqual(by_id["ovp.cleanup.workspace_clean"]["status"], "FAIL")
+
     def test_proof_is_blocked_when_leader_head_moves_after_integration(self):
         self.prepare()
         workspace = self.mutate_and_commit()
@@ -166,7 +198,8 @@ class OvpRuntimeTests(unittest.TestCase):
         ovp.review_task(repo=self.repo, task_id="KAN-001", decision="accept", reason="diff inspected", inspected_diff=True)
         ovp.integrate_task(repo=self.repo, task_id="KAN-001")
         (self.repo / "README.md").write_text("later\n", encoding="utf-8")
-        git(self.repo, "add", "."); git(self.repo, "commit", "-m", "later")
+        git(self.repo, "add", ".")
+        git(self.repo, "commit", "-m", "later")
         proof_file = self.root / "proof.json"
         proof_file.write_text(json.dumps({"schema_version":"1.1","status":"PASS","proof_level":"P3"}), encoding="utf-8")
         result = ovp.record_proof(repo=self.repo, task_id="KAN-001", result_path=proof_file)
