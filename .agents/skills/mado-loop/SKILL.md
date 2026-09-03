@@ -16,7 +16,7 @@ Run **UNDERSTAND -> ROUTE -> MAKE -> INTEGRATE -> RUN -> INSPECT -> VERIFY -> FI
 3. **MAKE:** implement the smallest coherent change through the selected specialists and tools. Keep the orchestrator responsible for routing and acceptance, specialists responsible for domain guidance, engine/asset tools responsible for deterministic operations, optional proposal workers responsible only for bounded proposals, OVP mutation workers responsible only for their assigned isolated workspace through `REVIEW_READY`, and the proof system responsible for claims.
 4. **INTEGRATE:** connect code, scenes, resources, imports, UI, and gameplay in the user's project without taking ownership away from existing project structure. Worker majority vote is never an integration rule; choose from proposals or mutation receipts using project facts and requested acceptance criteria. Mutation workers never merge or accept their own work. For OVP tasks, accept only after `ovp_runtime.py review --inspected-diff`, integrate from the leader checkout, then bind the normal schema-v1.1 proof result with `ovp_runtime.py proof`.
 5. **RUN, INSPECT, VERIFY, FIX:** escalate evidence from the cheapest relevant proof level. Inspect actual output, repair observed defects, and rerun affected checks.
-6. **PROVE:** report a schema-v1.1 result using `scripts/common/result.py`, artifact evidence, the achieved P0-P5 level, remaining unknowns, and an AI Creole handoff when work continues across agents. In every bounded task receipt, include `skills_used` with canonical registry ids for specialist skills actually opened or invoked; use an empty list when none were used. Recommendations, internal references, worker roles, providers, and ordinary tools do not count as `skills_used`.
+6. **PROVE:** report a schema-v1.1 result using `scripts/common/result.py`, artifact evidence, the achieved P0-P5 level, remaining unknowns, and an AI Creole handoff when work continues across agents. In every final bounded MADO LOOP task receipt, include `skills_used` with canonical registry ids for specialist skills actually opened or invoked across the orchestrator and accepted worker evidence; use an empty list when none were used. OVP mutation receipts are lower-level evidence bundles and do not replace this final provenance field. Recommendations, internal references, worker roles, providers, and ordinary tools do not count as `skills_used`.
 
 ## Domain references
 
@@ -57,13 +57,14 @@ For multi-worker execution:
 - give every worker the same bounded task semantics and only the repository context needed for that task;
 - express OVP mutation assignments with AI Creole core fields `TASK / GOAL / STATE / TARGET / DO / KEEP / NO / OUT / CHECK / RISK / NEXT`;
 - require mutation workers to commit their bounded change and end at `REVIEW_READY`, never `DONE`;
-- require receipt check IDs to match the dispatch acceptance IDs exactly;
+- require mutation receipt check IDs to match the dispatch acceptance IDs exactly;
 - never let model output recursively create new roles or workers;
 - never feed one primary proposal worker another primary worker's answer before the fan-in review stage;
 - do not use worker majority vote as acceptance;
 - let the orchestrator choose, review, apply, and merge the smallest coherent change;
 - use narrow typed visual-broker actions rather than unrestricted desktop automation when delegated visual inspection is required;
-- run normal P0-P5 proof after integration and bind its schema-v1.1 result to the integrated HEAD.
+- run normal P0-P5 proof after integration and bind its schema-v1.1 result to the integrated HEAD;
+- aggregate specialist provenance into the final bounded MADO LOOP task receipt's `skills_used` field.
 
 Fixed/adaptive API swarms, the Codex-native subscription swarm, and Budget Governor 2.0 preserve deterministic role ordering, isolate individual worker failures, avoid credential persistence, and report `proof_status: UNPROVEN` plus `integration_required: true`. They remain proposal systems unless explicitly upgraded with the OVP isolation and mutation contract.
 
