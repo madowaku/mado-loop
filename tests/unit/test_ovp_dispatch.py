@@ -93,6 +93,16 @@ class OvpDispatchTests(unittest.TestCase):
         with self.assertRaises(dispatch.DispatchConfigError):
             dispatch.build_provider_plan("local", workspace=workspace)
 
+    def test_custom_command_args_are_redacted_from_public_metadata(self):
+        workspace = self.root / "worker"
+        plan = dispatch.build_provider_plan(
+            "local", workspace=workspace, command_json='["agent", "--token", "secret-value"]'
+        )
+        self.assertEqual(plan.command[-1], "secret-value")
+        public = json.dumps(plan.public_dict())
+        self.assertNotIn("secret-value", public)
+        self.assertIn("custom args redacted", public)
+
     def test_worker_env_does_not_inherit_secret_values_by_default(self):
         source = {"PATH": "/bin", "HOME": "/tmp/home", "OPENAI_API_KEY": "secret", "CUSTOM": "ok"}
         env, names = dispatch.build_worker_env(source=source)
@@ -133,6 +143,38 @@ class OvpDispatchTests(unittest.TestCase):
         self.assertEqual(result["status"], "PASS")
         self.assertEqual(ovp._load_manifest(self.repo, "KAN-101")["state"], "READY")
         self.assertEqual(called, [])
+
+    def test_fresh_dispatch_rejects_dirty_workspace_before_state_change(self):
+        self.prepare()
+        manifest = ovp._load_manifest(self.repo, "KAN-101")
+        workspace = Path(manifest["workspace"])
+        (workspace / "src" / "player.gd").write_text("dirty\n", encoding="utf-8")
+        with self.assertRaises(dispatch.DispatchConfigError):
+            dispatch.dispatch_task(
+                repo=self.repo,
+                task_id="KAN-101",
+                provider="local",
+                command_json='["fake-agent"]',
+                env_source={"PATH": "/bin"},
+                runner=self.mutation_runner(),
+            )
+        self.assertEqual(ovp._load_manifest(self.repo, "KAN-101")["state"], "READY")
+
+    def test_dispatch_rejects_worker_branch_identity_change_before_execution(self):
+        self.prepare()
+        manifest = ovp._load_manifest(self.repo, "KAN-101")
+        workspace = Path(manifest["workspace"])
+        git(workspace, "checkout", "-b", "hijack")
+        with self.assertRaises(dispatch.DispatchConfigError):
+            dispatch.dispatch_task(
+                repo=self.repo,
+                task_id="KAN-101",
+                provider="local",
+                command_json='["fake-agent"]',
+                env_source={"PATH": "/bin"},
+                runner=self.mutation_runner(),
+            )
+        self.assertEqual(ovp._load_manifest(self.repo, "KAN-101")["state"], "READY")
 
     def test_local_dispatch_reaches_review_ready_through_authoritative_receipt(self):
         self.prepare()
