@@ -88,7 +88,11 @@ class OvpDispatchTests(unittest.TestCase):
         self.assertIn(str(workspace), codex.command)
         self.assertEqual(codex.output_mode, "codex-jsonl")
         claude = dispatch.build_provider_plan("claude", workspace=workspace, model="sonnet-test")
-        self.assertIn("acceptEdits", claude.command)
+        self.assertIn("--safe-mode", claude.command)
+        self.assertIn("dontAsk", claude.command)
+        self.assertIn(dispatch.CLAUDE_ALLOWED_TOOLS, claude.command)
+        self.assertIn("Bash(git commit *)", dispatch.CLAUDE_ALLOWED_TOOLS)
+        self.assertNotIn("Bash(git push *)", dispatch.CLAUDE_ALLOWED_TOOLS)
         self.assertEqual(claude.output_mode, "claude-json")
         with self.assertRaises(dispatch.DispatchConfigError):
             dispatch.build_provider_plan("local", workspace=workspace)
@@ -138,9 +142,16 @@ class OvpDispatchTests(unittest.TestCase):
         self.assertIn("custom args redacted", public)
 
     def test_worker_env_does_not_inherit_secret_values_by_default(self):
-        source = {"PATH": "/bin", "HOME": "/tmp/home", "OPENAI_API_KEY": "secret", "CUSTOM": "ok"}
+        source = {
+            "PATH": "/bin",
+            "HOME": "/tmp/home",
+            "CODEX_HOME": "/tmp/codex-home",
+            "OPENAI_API_KEY": "secret",
+            "CUSTOM": "ok",
+        }
         env, names = dispatch.build_worker_env(source=source)
         self.assertEqual(env["PATH"], "/bin")
+        self.assertEqual(env["CODEX_HOME"], "/tmp/codex-home")
         self.assertNotIn("OPENAI_API_KEY", env)
         self.assertNotIn("CUSTOM", env)
         self.assertIn("PATH", names)
