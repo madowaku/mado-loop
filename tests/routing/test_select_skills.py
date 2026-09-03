@@ -21,6 +21,8 @@ class SelectSkillsTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
         self.assertFalse(registry["policy"]["auto_install"])
         self.assertEqual("skills_used", registry["policy"]["receipt_key"])
+        self.assertEqual(3, registry["policy"]["feedback_min_samples"])
+        self.assertEqual(4, registry["policy"]["feedback_max_adjustment"])
 
     def test_ui_route_selects_ui_specialists(self):
         payload = selector.route_task("HUDのsafe areaとfocusを直して")
@@ -29,6 +31,7 @@ class SelectSkillsTests(unittest.TestCase):
             ["godot-ui-control", "game-ui-ux"], payload["recommended_skills"][:2]
         )
         self.assertFalse(payload["availability_known"])
+        self.assertFalse(payload["feedback_stats_known"])
         self.assertEqual([], payload["loadable_skills"])
 
     def test_trigger_can_select_specialist_without_domain_match(self):
@@ -63,8 +66,60 @@ class SelectSkillsTests(unittest.TestCase):
         self.assertLessEqual(
             len(payload["recommended_skills"]), registry["policy"]["max_auto_selected"]
         )
-        priorities = [item["priority"] for item in payload["selection"]]
-        self.assertEqual(priorities, sorted(priorities, reverse=True))
+        effective = [item["effective_priority"] for item in payload["selection"]]
+        self.assertEqual(effective, sorted(effective, reverse=True))
+
+    def test_feedback_nudges_only_existing_candidates(self):
+        stats = {
+            "schema_version": "1",
+            "receipt_count": 8,
+            "skills": {
+                "game-feel": {
+                    "uses": 4, "pass": 4, "warn": 0, "unknown": 0, "fail": 0,
+                    "repair_cycles_total": 0, "token_samples": 4, "tokens_total": 12000,
+                },
+                "godot-nodes-scenes": {
+                    "uses": 4, "pass": 0, "warn": 0, "unknown": 0, "fail": 4,
+                    "repair_cycles_total": 8, "token_samples": 4, "tokens_total": 8000,
+                },
+                "puzzle": {
+                    "uses": 20, "pass": 20, "warn": 0, "unknown": 0, "fail": 0,
+                    "repair_cycles_total": 0, "token_samples": 0, "tokens_total": 0,
+                },
+            },
+        }
+        payload = selector.route_task(
+            "UI HUD scene node game feel juice feedback",
+            stats=stats,
+        )
+        self.assertTrue(payload["feedback_stats_known"])
+        self.assertIn("game-feel", payload["recommended_skills"])
+        self.assertIn("godot-nodes-scenes", payload["recommended_skills"])
+        self.assertNotIn("puzzle", payload["recommended_skills"])
+        selected = {item["id"]: item for item in payload["selection"]}
+        self.assertGreater(selected["game-feel"]["feedback_adjustment"], 0)
+        self.assertLess(selected["godot-nodes-scenes"]["feedback_adjustment"], 0)
+        self.assertGreater(
+            payload["recommended_skills"].index("godot-nodes-scenes"),
+            payload["recommended_skills"].index("game-feel"),
+        )
+
+    def test_feedback_requires_minimum_samples(self):
+        stats = {
+            "schema_version": "1",
+            "receipt_count": 2,
+            "skills": {
+                "game-feel": {
+                    "uses": 2, "pass": 0, "warn": 0, "unknown": 0, "fail": 2,
+                    "repair_cycles_total": 10, "token_samples": 0, "tokens_total": 0,
+                }
+            },
+        }
+        payload = selector.route_task("game feel juice feedback", stats=stats)
+        item = next(item for item in payload["selection"] if item["id"] == "game-feel")
+        self.assertEqual(2, item["feedback_samples"])
+        self.assertEqual(0.0, item["feedback_adjustment"])
+        self.assertEqual(item["priority"], item["effective_priority"])
 
 
 if __name__ == "__main__":
