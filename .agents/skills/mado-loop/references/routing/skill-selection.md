@@ -51,13 +51,13 @@ receipt:
 
 The learning loop deliberately separates **evidence history** from **routing context**:
 
-- `.mado-loop/skill_feedback.jsonl` is an append-only, content-free ledger. Each event contains only a stable receipt id, final `PASS` / `WARN` / `UNKNOWN` / `FAIL`, canonical `skills_used`, repair-cycle count, and optional observed token total.
-- `.mado-loop/skill_stats.json` is a compact aggregate cache containing per-skill use/outcome/rework/token counters. `select_skills.py` may read this tiny file directly.
+- `.mado-loop/skill_feedback.jsonl` is an append-only, content-free ledger. Each event contains only a short opaque receipt id, final `PASS` / `WARN` / `UNKNOWN` / `FAIL`, canonical `skills_used`, repair-cycle count, and optional observed task-total token count.
+- `.mado-loop/skill_stats.json` is a compact aggregate cache containing per-skill use/outcome/rework counters plus token totals associated with tasks where that skill participated. Those token counters are correlational, not attribution to one skill.
 - Prompts, completions, summaries, source code, secrets, credentials, user data, and raw command logs must never enter the feedback ledger.
 - `record_skill_feedback.py` is idempotent by receipt id. Re-recording the exact same event is a no-op; a conflicting duplicate is rejected.
 - Feedback never creates a candidate skill. Task-domain and trigger rules still decide relevance first.
 - Feedback is ignored until the registry's `feedback_min_samples` threshold is reached, then applies at most `feedback_max_adjustment` priority points. This prevents one lucky or unlucky run from hijacking routing.
-- Outcome and repair cycles affect the bounded priority adjustment. Token totals are collected for later normalized efficiency analysis but do not yet change ranking because raw token counts are not comparable across tasks of different complexity.
+- Outcome and repair cycles affect the bounded priority adjustment. Associated task token totals are collected for later normalized efficiency analysis but do not yet change ranking because raw token counts are not comparable across tasks of different complexity or multi-skill participation.
 - Missing feedback files are normal. MADO LOOP falls back to the static deterministic registry with no warning and no loss of proof authority.
 
 Example recording command after the final task receipt is known:
