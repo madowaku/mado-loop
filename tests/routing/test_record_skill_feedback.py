@@ -30,7 +30,7 @@ class RecordSkillFeedbackTests(unittest.TestCase):
         self.assertNotIn("prompt", event)
         self.assertNotIn("summary", event)
 
-    def test_build_stats_aggregates_outcomes_repairs_and_tokens(self):
+    def test_build_stats_aggregates_outcomes_repairs_and_associated_tokens(self):
         events = [
             feedback.canonical_event(
                 receipt_id="A", status="PASS", skills_used=["game-feel"], tokens=100
@@ -51,8 +51,8 @@ class RecordSkillFeedbackTests(unittest.TestCase):
         self.assertEqual(1, feel["pass"])
         self.assertEqual(1, feel["warn"])
         self.assertEqual(2, feel["repair_cycles_total"])
-        self.assertEqual(2, feel["token_samples"])
-        self.assertEqual(400, feel["tokens_total"])
+        self.assertEqual(2, feel["associated_token_samples"])
+        self.assertEqual(400, feel["associated_tokens_total"])
         self.assertEqual(2, puzzle["uses"])
         self.assertEqual(1, puzzle["fail"])
 
