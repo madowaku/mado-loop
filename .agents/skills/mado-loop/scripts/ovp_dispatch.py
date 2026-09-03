@@ -43,11 +43,16 @@ class ProviderPlan:
     command: tuple[str, ...]
     output_mode: str
     prompt_transport: str = "stdin"
+    redact_command: bool = False
 
     def public_dict(self) -> dict[str, Any]:
+        if self.redact_command and len(self.command) > 1:
+            command = [self.command[0], f"<{len(self.command) - 1} custom args redacted>"]
+        else:
+            command = list(self.command)
         return {
             "provider": self.provider,
-            "command": list(self.command),
+            "command": command,
             "output_mode": self.output_mode,
             "prompt_transport": self.prompt_transport,
         }
@@ -68,7 +73,9 @@ class WorkerRun:
             "status": self.status,
             "returncode": self.returncode,
             "duration_ms": self.duration_ms,
-            "final_message": self.final_message,
+            "final_message_present": bool(self.final_message),
+            "stdout_chars": len(self.stdout),
+            "stderr_chars": len(self.stderr),
             "error": self.error,
         }
 
@@ -139,7 +146,7 @@ def build_provider_plan(
     if provider not in PROVIDERS:
         raise DispatchConfigError(f"unsupported provider: {provider}")
     if command_json:
-        return ProviderPlan(provider, _validate_command_json(command_json), "raw")
+        return ProviderPlan(provider, _validate_command_json(command_json), "raw", redact_command=True)
 
     if provider == "codex":
         binary = executable or "codex"
@@ -305,6 +312,39 @@ def render_worker_prompt(manifest: Mapping[str, Any], contract_text: str) -> str
     )
 
 
+def _validate_workspace(
+    leader: Path,
+    manifest: Mapping[str, Any],
+    *,
+    resume: bool,
+    timeout: float,
+) -> Path:
+    if Path(manifest["leader_repo"]).resolve() != leader:
+        raise DispatchConfigError("task manifest belongs to a different leader checkout")
+    workspace = Path(manifest["workspace"]).resolve()
+    if not workspace.is_dir():
+        raise DispatchConfigError(f"worker workspace is unavailable: {workspace}")
+    actual = ovp._repo_root(workspace, timeout=timeout)
+    if actual != workspace:
+        raise DispatchConfigError("recorded worker workspace is no longer a Git worktree root")
+    if ovp._common_git_dir(leader, timeout=timeout) != ovp._common_git_dir(workspace, timeout=timeout):
+        raise DispatchConfigError("worker workspace no longer belongs to the leader repository")
+    branch = ovp._current_branch(workspace, timeout=timeout)
+    if branch != manifest["worker_branch"]:
+        raise DispatchConfigError("worker workspace branch no longer matches the task manifest")
+    ancestor = ovp._git(
+        workspace,
+        ["merge-base", "--is-ancestor", manifest["base_commit"], "HEAD"],
+        timeout=timeout,
+        check=False,
+    )
+    if ancestor.returncode != 0:
+        raise DispatchConfigError("worker branch no longer descends from the prepared base commit")
+    if not resume and not ovp._clean(workspace, timeout=timeout):
+        raise DispatchConfigError("fresh dispatch requires a clean worker workspace")
+    return workspace
+
+
 def run_worker(
     plan: ProviderPlan,
     *,
@@ -377,19 +417,18 @@ def dispatch_task(
     env_source: Mapping[str, str] | None = None,
     runner=subprocess.run,
 ) -> dict[str, Any]:
-    leader = ovp._repo_root(repo, timeout=min(timeout, ovp.DEFAULT_TIMEOUT))
+    git_timeout = min(timeout, ovp.DEFAULT_TIMEOUT)
+    leader = ovp._repo_root(repo, timeout=git_timeout)
     task_id = ovp._validate_task_id(task_id)
-    manifest = ovp._load_manifest(leader, task_id, timeout=min(timeout, ovp.DEFAULT_TIMEOUT))
+    manifest = ovp._load_manifest(leader, task_id, timeout=git_timeout)
     state = manifest["state"]
     if resume:
         if state != "WORKING":
             raise DispatchConfigError(f"--resume requires WORKING, found {state}")
     elif state not in {"READY", "REWORK"}:
         raise DispatchConfigError(f"dispatch requires READY or REWORK, found {state}; use --resume only for an interrupted WORKING task")
-    workspace = Path(manifest["workspace"]).resolve()
-    if not workspace.is_dir():
-        raise DispatchConfigError(f"worker workspace is unavailable: {workspace}")
-    task_dir = ovp._task_dir(leader, task_id, timeout=min(timeout, ovp.DEFAULT_TIMEOUT))
+    workspace = _validate_workspace(leader, manifest, resume=resume, timeout=git_timeout)
+    task_dir = ovp._task_dir(leader, task_id, timeout=git_timeout)
     contract_path = (task_dir / "AI_CREOLE.txt").resolve()
     if not contract_path.is_file():
         raise DispatchConfigError("AI Creole contract is unavailable")
@@ -434,7 +473,7 @@ def dispatch_task(
     dispatch_record = {
         "schema_version": SCHEMA_VERSION,
         "provider": provider,
-        "command": list(plan.command),
+        "command": plan.public_dict()["command"],
         "duration_ms": run.duration_ms,
         "returncode": run.returncode,
         "status": run.status,
@@ -487,7 +526,7 @@ def dispatch_task(
             artifacts=handoff.get("artifacts", []),
             risks=handoff.get("risks", []),
             assumptions=handoff.get("assumptions", []),
-            timeout=min(timeout, ovp.DEFAULT_TIMEOUT),
+            timeout=git_timeout,
         )
     except (ValueError, RuntimeError, OSError) as exc:
         return {
