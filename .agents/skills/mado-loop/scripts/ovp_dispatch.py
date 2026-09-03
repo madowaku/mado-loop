@@ -142,6 +142,7 @@ def build_provider_plan(
     model: str | None = None,
     reasoning_effort: str | None = None,
     keep_user_config: bool = False,
+    host_platform: str | None = None,
 ) -> ProviderPlan:
     if provider not in PROVIDERS:
         raise DispatchConfigError(f"unsupported provider: {provider}")
@@ -160,6 +161,11 @@ def build_provider_plan(
             command.extend(["-c", f'model_reasoning_effort="{reasoning_effort}"'])
         if not keep_user_config:
             command.append("--ignore-user-config")
+            if (host_platform or sys.platform).lower().startswith("win"):
+                # Codex CLI 0.152.0 can lose the usable native-Windows sandbox selector
+                # when user config is ignored. Keep hermetic config while selecting the
+                # Windows sandbox backend explicitly; workspace-write remains the scope.
+                command.extend(["-c", 'windows.sandbox="elevated"'])
         command.append("-")
         return ProviderPlan(provider, tuple(command), "codex-jsonl")
 
@@ -280,11 +286,24 @@ def parse_handoff(message: str) -> dict[str, Any]:
     return payload
 
 
-def render_worker_prompt(manifest: Mapping[str, Any], contract_text: str) -> str:
+def render_worker_prompt(
+    manifest: Mapping[str, Any],
+    contract_text: str,
+    *,
+    provider: str | None = None,
+    host_platform: str | None = None,
+) -> str:
     acceptance = manifest.get("acceptance", [])
     required = [item["id"] for item in acceptance if item.get("required")]
     optional = [item["id"] for item in acceptance if not item.get("required")]
     check_shape = ", ".join(json.dumps(item) + ': "PASS"' for item in required + optional)
+    windows_codex_note = ""
+    if provider == "codex" and (host_platform or sys.platform).lower().startswith("win"):
+        windows_codex_note = (
+            "WINDOWS CODEX LINKED-WORKTREE NOTE: Prefer PowerShell/Python/shell file writes inside the current worktree "
+            "instead of relying on apply_patch. If the provider sandbox rejects a write, report FAIL or UNKNOWN rather than "
+            "claiming the change succeeded.\n"
+        )
     return (
         "MADO LOOP OVP MUTATION WORKER\n"
         "You are operating inside one isolated Git worktree. You may modify only the assigned repository scope.\n"
@@ -292,7 +311,8 @@ def render_worker_prompt(manifest: Mapping[str, Any], contract_text: str) -> str
         "Do not review, merge, integrate, run final P0-P5 acceptance, or claim DONE/PROVEN.\n"
         "Implement the bounded task, run the assigned worker-side checks, commit the change on the current worker branch, and leave the worktree clean.\n"
         "Your final response MUST contain exactly one JSON object using schema mado-mutation-handoff/v1.\n"
-        "The orchestrator will independently validate Git identity, scope, checks, and receipt.\n\n"
+        "The orchestrator will independently validate Git identity, scope, checks, and receipt.\n"
+        f"{windows_codex_note}\n"
         "AI CREOLE CONTRACT:\n"
         f"{contract_text.rstrip()}\n\n"
         "HANDOFF JSON SHAPE:\n"
@@ -433,10 +453,11 @@ def dispatch_task(
     if not contract_path.is_file():
         raise DispatchConfigError("AI Creole contract is unavailable")
     contract_text = contract_path.read_text(encoding="utf-8")
-    prompt = render_worker_prompt(manifest, contract_text)
+    prompt = render_worker_prompt(manifest, contract_text, provider=provider, host_platform=sys.platform)
     plan = build_provider_plan(
         provider, workspace=workspace, command_json=command_json, executable=executable,
         model=model, reasoning_effort=reasoning_effort, keep_user_config=keep_user_config,
+        host_platform=sys.platform,
     )
     env, inherited_env = build_worker_env(source=env_source, pass_env=pass_env, allow_secret_env=allow_secret_env)
     executable_name = plan.command[0]
