@@ -28,9 +28,14 @@ MAX_HANDOFF_CHARS = 200_000
 SAFE_ENV_KEYS = {
     "PATH", "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "TMP", "TEMP", "TMPDIR",
     "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "LANG", "LC_ALL", "LC_CTYPE", "TERM",
-    "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE",
+    "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "CODEX_HOME",
 }
 SECRET_ENV_RE = re.compile(r"(?:TOKEN|SECRET|PASSWORD|PASSWD|API[_-]?KEY|PRIVATE[_-]?KEY|CREDENTIAL|AUTH)", re.I)
+CLAUDE_ALLOWED_TOOLS = (
+    "Read,Glob,Grep,Edit,Write,"
+    "Bash(git status *),Bash(git diff *),Bash(git diff --check *),"
+    "Bash(git rev-parse *),Bash(git add *),Bash(git commit *)"
+)
 
 
 class DispatchConfigError(ValueError):
@@ -171,7 +176,15 @@ def build_provider_plan(
 
     if provider == "claude":
         binary = executable or "claude"
-        command = [binary, "-p", "--output-format", "json", "--permission-mode", "acceptEdits"]
+        command = [
+            binary,
+            "-p",
+            "--output-format", "json",
+            "--safe-mode",
+            "--permission-mode", "dontAsk",
+            "--tools", "Read,Glob,Grep,Edit,Write,Bash",
+            "--allowedTools", CLAUDE_ALLOWED_TOOLS,
+        ]
         if model:
             command.extend(["--model", model])
         return ProviderPlan(provider, tuple(command), "claude-json")
