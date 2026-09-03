@@ -4,6 +4,8 @@
 
 ## Unreleased
 
+- Orchestration & Verification Protocol (OVP) のfirst-party mutation runtime `ovp_runtime.py` を追加。worker-equivalent disposable preflight、Git worktree isolation、AI Creole Agent Contract、exact-ID mutation receipt、orchestrator-only review/acceptance、merge/cherry-pick integration、schema-v1.1 P0-P5 proof binding、安全cleanupを一つのstate machineとして実装
+- OVP mutation workerはassigned worktreeだけを変更してcommitし、`REVIEW_READY`で停止。scope逸脱、dirty/uncommitted result、receipt後のbranch/HEAD差し替え、diff未確認acceptance、integration後のleader HEAD移動をgateで拒否し、既存proposal swarmのread-only / `proof_status: UNPROVEN` contractは維持
 - `budget_governor_v2.py` を追加し、OpenRouter Hy3 free / NVIDIA fleet / explicit logged-free / local / Codex Plus LunaをPlus reset pressureとrole qualityで横断routing。selected lane障害時は同じsensitivity policy内の候補へdeterministic automatic fallbackを実行し、worker出力は引き続きproposal-only / `proof_status: UNPROVEN`
 - OpenRouter `tencent/hy3-preview:free` をzero-priced bounded worker laneとしてBudget Governor 2.0から利用可能にし、recon/testでは通常時からfree-first、conserve/critical時はimplementation/specialistでもPlusより前へ昇格可能。OpenRouterの既存 `data_collection=deny,zdr=true` policyは維持
 - Tencent Hy4 previewのWorkBuddy/CodeBuddy launch promotionはmanual advisory laneとして登録。2026-08-28 launchから2週間という公式告知をconservative cutoffで扱うが、WorkBuddy product entitlementをAPI entitlementへ変換せず、paid Hy4 API fallbackは既定で無効
@@ -38,7 +40,7 @@ Production release candidateとして、以下を実装しました。
 - AI Creole handoff、FIELD NOTES policy、project safety、completion contract
 - vendor payloadとlicenseを含む、payload-only・ZIP Slip防御付き・byte-reproducible package
 - Windows PowerShell 5.1 / PowerShell 7対応のtransactional install、reinstall、upgrade、明示downgrade、rollback、ownership-safe uninstall
-- Windows / Ubuntu向けGitHub Actions定義。routing、unit、sprite、Godot integration、P0-P5、package、install、licenseを必須gateとし、成功時だけartifactを公開
+- Windows / Ubuntu向けGitHub Actions定義。routing、unit、sprite、Godot integration、P0–P5、package、install、licenseを必須gateとし、成功時だけartifactを公開
 - third-party attributionと固定upstream commitの記録
 
 ### Evidence and limitations
