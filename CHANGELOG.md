@@ -24,6 +24,8 @@
 - `skill_registry.yaml` と `scripts/select_skills.py` を追加し、task domainと明示トリガーからオンデマンド専門Skillを決定的に推薦するrouting layerを追加
 - 専門Skillは自動インストールせず、実際に利用可能なものだけをロードし、既存のfirst-party reference/vendor fallbackとMADO LOOP proof authorityを維持
 - bounded task receiptに、実際に開いた・呼び出した専門Skillだけを `skills_used` として記録するprovenance contractを追加
+- `record_skill_feedback.py` を追加し、final receiptの結果・`skills_used`・repair cycle・実測token metadataだけをcontent-free JSONLへidempotent記録し、Router用の小さな`skill_stats.json`へ集約
+- Skill推薦に最低3 samples・最大±4点のbounded feedback補正を追加。feedbackは既存semantic candidateの順序だけを微調整し、未関連Skillを新規選択せず、生token数は難易度正規化前なので当面rankingには使わない
 - Web専用の `develop-web-game` / Three.js / Higgsfield系は `manual_only` とし、Godot中心のMADO LOOP 1.xが暗黙にruntime scopeを広げないよう固定
 
 ## 1.0.0
