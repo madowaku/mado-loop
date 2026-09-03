@@ -93,6 +93,40 @@ class OvpDispatchTests(unittest.TestCase):
         with self.assertRaises(dispatch.DispatchConfigError):
             dispatch.build_provider_plan("local", workspace=workspace)
 
+    def test_codex_windows_hermetic_plan_selects_usable_sandbox_backend(self):
+        workspace = self.root / "worker"
+        plan = dispatch.build_provider_plan("codex", workspace=workspace, host_platform="win32")
+        self.assertIn("--ignore-user-config", plan.command)
+        self.assertIn('windows.sandbox="elevated"', plan.command)
+        user_config = dispatch.build_provider_plan(
+            "codex", workspace=workspace, host_platform="win32", keep_user_config=True
+        )
+        self.assertNotIn("--ignore-user-config", user_config.command)
+        self.assertNotIn('windows.sandbox="elevated"', user_config.command)
+
+    def test_codex_windows_prompt_warns_against_linked_worktree_patch_path(self):
+        manifest = {
+            "acceptance": [
+                {"id": "unit", "required": True},
+                {"id": "visual", "required": False},
+            ]
+        }
+        prompt = dispatch.render_worker_prompt(
+            manifest,
+            "TASK KAN-101\nNEXT REVIEW_READY\n",
+            provider="codex",
+            host_platform="win32",
+        )
+        self.assertIn("WINDOWS CODEX LINKED-WORKTREE NOTE", prompt)
+        self.assertIn("instead of relying on apply_patch", prompt)
+        linux_prompt = dispatch.render_worker_prompt(
+            manifest,
+            "TASK KAN-101\nNEXT REVIEW_READY\n",
+            provider="codex",
+            host_platform="linux",
+        )
+        self.assertNotIn("WINDOWS CODEX LINKED-WORKTREE NOTE", linux_prompt)
+
     def test_custom_command_args_are_redacted_from_public_metadata(self):
         workspace = self.root / "worker"
         plan = dispatch.build_provider_plan(
