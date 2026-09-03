@@ -119,9 +119,9 @@ python .agents/skills/mado-loop/scripts/ovp_runtime.py prepare `
   --pretty
 ```
 
-The command creates a `mado/ovp/<task-id>` branch, an isolated worktree, a manifest, and `AI_CREOLE.txt`. Provider-specific dispatch remains separate. The orchestrator may record dispatch progress with `mark --state DISPATCHED` and `mark --state WORKING`.
+The command creates a `mado/ovp/<task-id>` branch, an isolated worktree, a manifest, and `AI_CREOLE.txt`. Provider execution remains a separate capability boundary from the state runtime, but MADO LOOP now provides the first-party [OVP Dispatch Adapter](ovp-dispatch.md) in `scripts/ovp_dispatch.py` for Codex, Claude, or an explicitly configured local agent. The adapter keeps OVP state/receipt authority in the orchestrator-side process rather than the mutation worker. Manual dispatch may still record progress with `mark --state DISPATCHED` and `mark --state WORKING`.
 
-A mutation worker must commit its bounded change, leave the worktree clean, then submit the exact acceptance IDs:
+A mutation worker must commit its bounded change, leave the worktree clean, then submit the exact acceptance IDs. When `ovp_dispatch.py` is used, the worker returns `mado-mutation-handoff/v1` and the adapter performs this authoritative receipt submission. For a manual mutation lane, submit the receipt directly:
 
 ```powershell
 python .agents/skills/mado-loop/scripts/ovp_runtime.py receipt `
