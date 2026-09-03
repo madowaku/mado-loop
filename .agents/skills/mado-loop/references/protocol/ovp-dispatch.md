@@ -52,6 +52,14 @@ python .agents/skills/mado-loop/scripts/ovp_dispatch.py `
 
 Use `--keep-user-config` only when the task explicitly depends on the user's Codex configuration. Model choice remains an orchestrator routing decision.
 
+### Native Windows linked-worktree compatibility
+
+As of 2026-09-03, two upstream Codex CLI bugs relevant to OVP remain open: [openai/codex#42172](https://github.com/openai/codex/issues/42172) reports that Codex CLI 0.152.0 on native Windows can block every command when `--ignore-user-config` removes the Windows sandbox selector, and [openai/codex#37522](https://github.com/openai/codex/issues/37522) reports `apply_patch` misclassifying files inside a linked Git worktree as outside the project.
+
+When the first-party profile runs on native Windows while ignoring user config, the adapter explicitly supplies `windows.sandbox="elevated"` while retaining `--sandbox workspace-write`. This selects the currently usable Windows sandbox backend without widening the requested Codex workspace scope. The worker prompt also tells Codex to prefer PowerShell/Python/shell file writes inside the current linked worktree rather than depending on `apply_patch`.
+
+These are compatibility mitigations, not proof. If an upstream regression still prevents the requested mutation, the worker must report failure/unknown and the OVP receipt gate will refuse `REVIEW_READY` unless a real clean committed in-scope change exists. Recheck the upstream issues when updating the pinned or recommended Codex CLI version and remove compatibility behavior only after an empirical linked-worktree mutation test passes.
+
 ## Claude mutation worker
 
 The first-party Claude profile uses non-interactive JSON output and edit acceptance inside the recorded worktree:
@@ -82,7 +90,7 @@ python .agents/skills/mado-loop/scripts/ovp_dispatch.py `
 
 The command receives the mutation prompt on stdin and runs with the OVP worktree as its current directory. It must edit and commit through its own agent/tool runtime, then write a valid handoff object to stdout.
 
-Do not wrap the command in `cmd /c`, `powershell -Command`, `sh -c`, or another shell merely to gain quoting convenience. Keep argv explicit and bounded.
+Do not wrap the command in `cmd /c`, `powershell -Command`, `sh -c`, or another shell merely to gain quoting convenience. Keep argv explicit and bounded. Custom argv are executed as supplied but their arguments are redacted from public dispatch metadata; do not place secrets in command-line arguments because operating-system process inspection may still expose them.
 
 ## Mutation handoff
 
@@ -147,6 +155,6 @@ python .agents/skills/mado-loop/scripts/ovp_dispatch.py `
 
 ## Dispatch artifacts
 
-Provider stdout, stderr, and the latest bounded dispatch record are stored under the OVP task state directory in the Git common directory, outside the tracked project worktree. This keeps transient model logs out of normal source changes while preserving failure evidence for the orchestrator.
+Provider stdout, stderr, and the latest bounded dispatch record are stored under the OVP task state directory in the Git common directory, outside the tracked project worktree. This keeps transient model logs out of normal source changes while preserving failure evidence for the orchestrator. Public result metadata exposes only bounded status/count information rather than the raw worker completion, and custom command arguments are redacted.
 
 Do not treat provider stdout as final proof. Once the adapter reaches `REVIEW_READY`, continue with normal OVP `review`, `integrate`, and schema-v1.1 P0-P5 proof binding.
