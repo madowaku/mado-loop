@@ -8,19 +8,21 @@ MADO LOOP は自動では起動しません。Codex で明示的に `$mado-loop`
 
 基本ループは `UNDERSTAND → ROUTE → MAKE → INTEGRATE → RUN → INSPECT → VERIFY → FIX → PROVE` です。専門家やmodel workerの主張だけを完成証明にせず、実際のプロジェクトで観測できる証拠へ段階的に引き上げます。必須依存や必須検証が欠けた場合は green にせず、`UNKNOWN` または `FAIL` として正直に止まります。
 
-アーキテクチャは責務を4層に分離し、その横にoptionalなworker delegation planeを置きます。
+アーキテクチャは責務を4層に分離し、その横にproposal worker planeと、明示的にOVPへopt-inしたmutation worker laneを置きます。
 
 ```text
 ORCHESTRATOR
   ├─ SPECIALISTS
-  ├─ OPTIONAL WORKERS
+  ├─ PROPOSAL WORKERS
   │    ├─ single worker
   │    └─ parallel swarm
+  ├─ OVP MUTATION WORKERS
+  │    └─ isolated worktree → REVIEW_READY
   ├─ ENGINE / ASSET TOOLS
   └─ PROOF SYSTEM (P0-P5)
 ```
 
-workerは提案を返すだけで、project mutation、integration、acceptance、proofのauthorityを持ちません。詳細は [routing architecture](.agents/skills/mado-loop/references/routing/architecture.md)、[capability registry](.agents/skills/mado-loop/references/routing/capability-registry.md)、[worker provider router](.agents/skills/mado-loop/references/routing/provider-router.md)、[parallel worker swarm](.agents/skills/mado-loop/references/routing/worker-swarm.md) を参照してください。
+proposal workerはprojectを変更せずuntrusted proposalを返します。mutation workerは [Orchestration & Verification Protocol](.agents/skills/mado-loop/references/protocol/orchestration-verification.md) を明示的に通した場合だけ、割り当てられた隔離worktreeを変更できます。どちらもintegration、acceptance、proofのauthorityを持ちません。詳細は [routing architecture](.agents/skills/mado-loop/references/routing/architecture.md)、[capability registry](.agents/skills/mado-loop/references/routing/capability-registry.md)、[worker provider router](.agents/skills/mado-loop/references/routing/provider-router.md)、[parallel worker swarm](.agents/skills/mado-loop/references/routing/worker-swarm.md) を参照してください。
 
 ## Requirements
 
@@ -29,6 +31,7 @@ workerは提案を返すだけで、project mutation、integration、acceptance�
 - 互換対象: Godot 4.6
 - Linux / macOS: best effort（1.0 CI は Windows と Ubuntu を検証。macOS は hosted gate 未実施）
 - Python 3（CI 基準は Python 3.12）
+- Git。OVP mutation laneではworktree作成とworker commitに利用
 - Godotを使う実行・検証経路では、利用可能なGodot 4.x実行ファイル
 - 動画・音声やフレーム証拠を扱う経路では `ffmpeg` と `ffprobe`
 - sprite processorを使う経路では Pillow と NumPy（1.0 CI 固定値は Pillow 11.3.0 / NumPy 2.3.2）
@@ -76,7 +79,7 @@ Codexへの依頼で明示的に呼びます。
 $mado-loop プレイヤーのダッシュを実装し、実際に操作して証明して
 ```
 
-暗黙起動はありません。router は依頼を `CODE`, `GAMEPLAY`, `UI`, `SPRITE`, `IMAGE`, `ANIMATION`, `ASSET_INTEGRATION`, `REFERENCE_TO_UI`, `PIXEL_ART`, `PLAYTEST`, `RELEASE` に分類します。複数ドメインでは `MIXED` を付加し、専門ガイダンス → optional worker proposal/swarm → ツール処理 → Godot統合 → 観察／playtest → proof の順で最小経路を構成します。
+暗黙起動はありません。router は依頼を `CODE`, `GAMEPLAY`, `UI`, `SPRITE`, `IMAGE`, `ANIMATION`, `ASSET_INTEGRATION`, `REFERENCE_TO_UI`, `PIXEL_ART`, `PLAYTEST`, `RELEASE` に分類します。複数ドメインでは `MIXED` を付加し、専門ガイダンス → optional proposal worker / swarm または OVP mutation lane → ツール処理 → Godot統合 → 観察／playtest → proof の順で最小経路を構成します。
 
 分類器だけを確認する場合:
 
@@ -94,7 +97,7 @@ python .agents/skills/mado-loop/scripts/classify_task.py --pretty "UIを実装�
 
 ## Worker Provider Router
 
-bounded worker taskは `provider_router.py` で実行先を選べます。providerとmodelは分離され、model IDは設定として扱います。
+bounded proposal worker taskは `provider_router.py` で実行先を選べます。providerとmodelは分離され、model IDは設定として扱います。
 
 ```text
 public  → OpenRouter / local / explicitly allowed logged-free lane
@@ -110,11 +113,11 @@ $env:MADO_OPENROUTER_MODEL = "<provider/model>"
 python .agents/skills/mado-loop/scripts/provider_router.py plan --sensitivity private
 ```
 
-OpenRouter requestにはprovider privacy constraintsを付与します。logged free laneはpublic payload + explicit consent以外では選択しません。worker responseは常にuntrusted proposalです。
+OpenRouter requestにはprovider privacy constraintsを付与します。logged free laneはpublic payload + explicit consent以外では選択しません。proposal worker responseは常にuntrusted proposalです。
 
 ## Parallel Worker Swarm
 
-一つの提案で十分でない場合、`worker_swarm.py` がprimary workerを並列fan-outし、その後reviewerでfan-inします。
+一つの提案で十分でない場合、`worker_swarm.py` がprimary proposal workerを並列fan-outし、その後reviewerでfan-inします。
 
 ```text
                          +--> ARCHITECT ------+
@@ -144,6 +147,65 @@ python .agents/skills/mado-loop/scripts/worker_swarm.py run `
 
 swarmの`PASS`はmodel callsが完了したことだけを意味します。resultは常に `proof_status: UNPROVEN` と `integration_required: true` を持ち、MADO LOOP orchestratorが提案を選択・統合した後に通常のP0–P5を実行します。
 
+## OVP Mutation Runtime
+
+隔離された並列実装に実利がある場合だけ、`ovp_runtime.py` でmutation worker laneを明示的に開きます。既存proposal swarmを自動的にmutation workerへ昇格させることはありません。
+
+```text
+PREFLIGHT
+  → PREPARE / ISOLATE
+  → DISPATCHED
+  → WORKING
+  → REVIEW_READY
+  → ACCEPTED | REWORK | REJECTED
+  → INTEGRATED
+  → P0-P5
+  → PROVEN | FAILED | UNKNOWN
+```
+
+最初にworker-equivalentな使い捨てworktreeでpreflightします。
+
+```powershell
+python .agents/skills/mado-loop/scripts/ovp_runtime.py preflight --repo . --require-tool python --pretty
+```
+
+mutation taskは安定task ID、include/exclude scope、required acceptance IDを持ちます。`prepare` は `mado/ovp/<task-id>` branch、隔離worktree、Git common dir配下のmanifest、AI Creole Agent Contractを作成します。
+
+```powershell
+python .agents/skills/mado-loop/scripts/ovp_runtime.py prepare `
+  --repo . `
+  --task-id KAN-024 `
+  --goal "Player dash works without changing enemy behavior" `
+  --include "player/" `
+  --exclude "enemy/" `
+  --acceptance "unit=dash tests pass" `
+  --domain GAMEPLAY `
+  --domain CODE `
+  --pretty
+```
+
+workerは割り当てられたworktreeだけを変更し、bounded changeをcommitしてcleanな状態でreceiptを提出します。receiptのcheck IDはdispatch時のacceptance IDと完全一致しなければなりません。scope外変更、未commit、receipt後のHEAD差し替えはgateで拒否されます。
+
+```powershell
+python .agents/skills/mado-loop/scripts/ovp_runtime.py receipt `
+  --repo <worker-worktree> `
+  --task-id KAN-024 `
+  --summary "Implemented dash and regression test" `
+  --check "unit=PASS" `
+  --evidence "unit=python -m unittest tests.test_dash" `
+  --pretty
+```
+
+`REVIEW_READY` は完成ではありません。Orchestratorはdiffを実際に確認し、`review --inspected-diff` でaccept/rework/rejectを記録します。accepted branchだけをleader checkoutからmerge/cherry-pickし、その後に通常のP0-P5を実行します。
+
+```powershell
+python .agents/skills/mado-loop/scripts/ovp_runtime.py review --repo . --task-id KAN-024 --decision accept --reason "Diff and evidence inspected" --inspected-diff --pretty
+python .agents/skills/mado-loop/scripts/ovp_runtime.py integrate --repo . --task-id KAN-024 --strategy merge --pretty
+python .agents/skills/mado-loop/scripts/ovp_runtime.py proof --repo . --task-id KAN-024 --result artifacts/result.json --pretty
+```
+
+proof resultはschema-v1.1である必要があり、integration直後の正確なleader HEADへbindingされます。最終stateまたはreject後は `cleanup` でruntime所有worktreeだけを安全に削除します。worker branchは既定で保持し、`--delete-branch` を指定しても `git branch -d` の安全削除だけを試します。
+
 ## P0–P5 proof ladder
 
 | Level | 証明するもの |
@@ -162,7 +224,7 @@ swarmの`PASS`はmodel callsが完了したことだけを意味します。resu
 | Workflow | 依頼例 | Expected route |
 | --- | --- | --- |
 | Gameplay | `$mado-loop RESTマスでHPが上限を超えないよう修正して` | `GAMEPLAY → Godot → P3` |
-| Complex gameplay refactor | `$mado-loop 戦闘入力を整理して回帰まで証明して` | `GAMEPLAY/CODE → SWARM(ARCHITECT + IMPLEMENTER + TEST WRITER → REVIEWER) → INTEGRATE → P3` |
+| Complex gameplay refactor | `$mado-loop 戦闘入力を整理して回帰まで証明して` | `GAMEPLAY/CODE → proposal swarm または OVP(PREFLIGHT → WORKTREE → REVIEW_READY → REVIEW → INTEGRATE) → P3` |
 | Sprite + Gameplay | `$mado-loop 京都ボスに狐火の攻撃アニメーションを追加して` | `SPRITE → ART DIRECTION → IMAGE GENERATION → NORMALIZE → GODOT INTEGRATION → GAMEPLAY → P3 → P4` |
 | UI | `$mado-loop ボス戦HUDをもっと見やすくして` | `GAME UI → GODOT UI → P2` |
 | Image-to-UI | `$mado-loop この画像を参考に戦闘HUDを作り直して` | `REFERENCE ANALYSIS → GAME UI → IMPLEMENT → CAPTURE → COMPARE → P2/P4` |
@@ -181,13 +243,16 @@ python scripts/package.py --output dist/mado-loop-1.0.0.zip --json
 
 [CI workflow](.github/workflows/ci.yml) は routing、unit、sprite、Windows/Ubuntu Godot integration、P0–P5、deterministic package、Windows dual-shell install、third-party attributionを必須gateにし、全gate成功時だけZIP artifactを公開します。production head `ae7b79fcda779811429014abd5d7c6b2b5a7b367` では [GitHub Actions run 32967083386](https://github.com/madowaku/mado-loop/actions/runs/32967083386) がWindows/Ubuntuの全必須gateとartifact publishまで成功しました。公開artifactは107件の安全な`ZIP_STORED` memberを含み、Linux CI buildとWindows local buildのbyte-identical SHA-256は `89397f793e04af0e6657f98a02a861a565af23ce2cbf652d9b49cecea44e71fc` です。
 
-provider/swarm unit testsはfake callerでselection、privacy、parallel fan-out、failure isolation、deterministic fan-in、authority invariantsを検証し、CIから外部model APIを呼びません。
+provider/swarm unit testsはfake callerでselection、privacy、parallel fan-out、failure isolation、deterministic fan-in、authority invariantsを検証し、CIから外部model APIを呼びません。OVP unit testsはtemporary Git repositoryと実worktreeを使い、preflight、scope isolation、receipt、review gate、integration、proof binding、safe cleanupをmodel APIなしで検証します。
 
 ## Troubleshooting
 
 - Godot、`ffmpeg`、`ffprobe`、Pillow、NumPyなど必須能力がない: 必須checkはPASSになりません。該当能力を自動導入せず、欠落と必要な次の操作を報告します。
 - worker providerが未設定: optional worker routeは`SKIPPED`/warningにできます。requiredなsecret delegationならlocal providerが必要です。
 - swarmの一部workerが失敗: successful proposalsを保持し、swarm statusは`WARN`。全primary worker失敗時だけ`FAIL`でreviewerをskipします。
+- OVP preflightが失敗: mutation fan-outを開始しません。同じ失敗を複数workerへ複製せず、leader laneで原因を修正するかread-only proposal routeへ戻します。
+- OVP receiptが拒否: uncommitted change、scope逸脱、acceptance ID不一致、branch/HEAD identityを確認します。`REVIEW_READY`を手動で偽装しません。
+- OVP cleanupが拒否: worker worktreeに未commit変更があります。runtimeはforce removeしません。
 - `destination collision` / ownership marker error: インストール先にMADO LOOP管理外のtreeがあります。上書きしません。内容を確認し、利用者自身が退避先を決めてください。
 - dirty / modified / unexpected files: upgradeは既存treeを保護して拒否します。必要な変更を別の場所へ退避してから再実行してください。
 - install中の失敗: publish前の旧版はrollbackされます。restoreまで失敗した場合、`.agents/skills/.mado-loop.backup.<id>` が唯一の有効backupとして保存されるため、削除せず内容を確認してください。
@@ -197,5 +262,3 @@ provider/swarm unit testsはfake callerでselection、privacy、parallel fan-out
 ## Licensing
 
 vendored third-party codeのnoticeと完全なlicense textは保持されています。詳細は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) と各vendor directoryを参照してください。
-
-**このリポジトリのfirst-party codeに適用するroot licenseは、ownerによってまだ選択されていません。** third-party部分のMIT licenseを、MADO LOOP全体の利用許諾と解釈しないでください。
