@@ -95,9 +95,17 @@ class RecordSkillFeedbackTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             feedback.canonical_event(receipt_id="", status="PASS", skills_used=["x"])
         with self.assertRaises(ValueError):
+            feedback.canonical_event(
+                receipt_id="task prompt with spaces", status="PASS", skills_used=["x"]
+            )
+        with self.assertRaises(ValueError):
             feedback.canonical_event(receipt_id="x", status="BROKEN", skills_used=["x"])
         with self.assertRaises(ValueError):
             feedback.canonical_event(receipt_id="x", status="PASS", skills_used=[])
+        with self.assertRaises(ValueError):
+            feedback.canonical_event(
+                receipt_id="x", status="PASS", skills_used=["not a skill id"]
+            )
         with self.assertRaises(ValueError):
             feedback.canonical_event(
                 receipt_id="x", status="PASS", skills_used=["x"], repair_cycles=-1
