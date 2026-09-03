@@ -38,7 +38,7 @@ A dry-run does not advance the task from `READY` or `REWORK`.
 
 ## Codex mutation worker
 
-The first-party Codex profile uses `codex exec` with an ephemeral `workspace-write` sandbox rooted at the recorded OVP worktree. Existing user configuration is ignored by default while normal home-directory authentication remains available.
+The first-party Codex profile uses `codex exec` with an ephemeral `workspace-write` sandbox rooted at the recorded OVP worktree. Existing user configuration is ignored by default while normal home-directory authentication remains available. `CODEX_HOME`, when set, is preserved as a non-secret authentication/configuration path while secret-looking environment variables remain explicit opt-ins.
 
 ```powershell
 python .agents/skills/mado-loop/scripts/ovp_dispatch.py `
@@ -56,13 +56,13 @@ Use `--keep-user-config` only when the task explicitly depends on the user's Cod
 
 As of 2026-09-03, two upstream Codex CLI bugs relevant to OVP remain open: [openai/codex#42172](https://github.com/openai/codex/issues/42172) reports that Codex CLI 0.152.0 on native Windows can block every command when `--ignore-user-config` removes the Windows sandbox selector, and [openai/codex#37522](https://github.com/openai/codex/issues/37522) reports `apply_patch` misclassifying files inside a linked Git worktree as outside the project.
 
-When the first-party profile runs on native Windows while ignoring user config, the adapter explicitly supplies `windows.sandbox="elevated"` while retaining `--sandbox workspace-write`. This selects the currently usable Windows sandbox backend without widening the requested Codex workspace scope. The worker prompt also tells Codex to prefer PowerShell/Python/shell file writes inside the current linked worktree rather than depending on `apply_patch`.
+When the first-party profile runs on native Windows while ignoring user config, the adapter explicitly supplies `windows.sandbox="elevated"` while retaining `--sandbox workspace-write`. This selects the currently usable Windows sandbox backend while the command still requests Codex's `workspace-write` scope. The worker prompt also tells Codex to prefer PowerShell/Python/shell file writes inside the current linked worktree rather than depending on `apply_patch`.
 
 These are compatibility mitigations, not proof. If an upstream regression still prevents the requested mutation, the worker must report failure/unknown and the OVP receipt gate will refuse `REVIEW_READY` unless a real clean committed in-scope change exists. Recheck the upstream issues when updating the pinned or recommended Codex CLI version and remove compatibility behavior only after an empirical linked-worktree mutation test passes.
 
 ## Claude mutation worker
 
-The first-party Claude profile uses non-interactive JSON output and edit acceptance inside the recorded worktree:
+The first-party Claude profile uses non-interactive JSON output plus `--safe-mode` so project/user customizations such as CLAUDE.md, skills, plugins, hooks, MCP servers, custom agents, and auto-memory do not silently expand the worker surface. It runs with `dontAsk`, exposing only the built-in read/edit/write/search/Bash tools and pre-approving file edits plus a narrow Git command set needed for status, diff, add, and commit. Unmatched mutating shell commands are denied instead of prompting in the headless worker.
 
 ```powershell
 python .agents/skills/mado-loop/scripts/ovp_dispatch.py `
@@ -72,6 +72,8 @@ python .agents/skills/mado-loop/scripts/ovp_dispatch.py `
   --model sonnet `
   --pretty
 ```
+
+This intentionally means arbitrary project test commands are not automatically granted through the first-party Claude shell policy. Claude should report a worker-side check as `UNKNOWN` or `SKIPPED` when it cannot execute that command. The orchestrator can still run deterministic checks after review/integration, or an explicitly designed typed test broker can be added later without granting unrestricted host-shell authority.
 
 Provider CLI surfaces can change independently of MADO LOOP. If an installed Codex or Claude version needs different invocation flags, use an explicit `--command-json` override. A command override is executed directly without a shell and must return the MADO mutation handoff on stdout.
 
@@ -120,7 +122,7 @@ A valid JSON handoff is still not trusted evidence by itself. The adapter calls 
 
 ## Environment boundary
 
-The adapter does not copy the parent process environment wholesale. By default it passes only a small operating-system/runtime allowlist such as `PATH`, home-directory variables, temp-directory variables, locale, and certificate paths.
+The adapter does not copy the parent process environment wholesale. By default it passes only a small operating-system/runtime allowlist such as `PATH`, home-directory variables, temp-directory variables, locale, certificate paths, and the non-secret `CODEX_HOME` path when present.
 
 Secret-looking variables such as API keys, auth tokens, passwords, private keys, and credentials are not inherited automatically. Explicit non-secret pass-through uses:
 
