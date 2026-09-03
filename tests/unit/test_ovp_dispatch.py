@@ -2,12 +2,14 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
 MODULE_PATH = Path(__file__).parents[2] / ".agents" / "skills" / "mado-loop" / "scripts" / "ovp_dispatch.py"
 SPEC = importlib.util.spec_from_file_location("ovp_dispatch", MODULE_PATH)
 dispatch = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = dispatch
 assert SPEC.loader is not None
 SPEC.loader.exec_module(dispatch)
 ovp = dispatch.ovp
