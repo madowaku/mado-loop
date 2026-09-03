@@ -12,13 +12,13 @@ The machine-readable registry is [`../../skill_registry.yaml`](../../skill_regis
 4. Inspect the actual installed-skill inventory. Load only recommended skills that are available. Never install a skill automatically.
 5. If a selected skill is unavailable, use its registered first-party fallback when one exists. Otherwise continue without it unless the user made that skill a required dependency.
 6. Keep the smallest useful team. The registry caps automatic recommendations at four skills, ordered by priority then skill id.
-7. Record only skills actually opened or invoked under `skills_used` in the task receipt. A recommendation alone does not count as use.
+7. Record only skills actually opened or invoked under `skills_used` in the final bounded MADO LOOP task receipt. A recommendation alone does not count as use.
 
-The Scout may propose specialist skills, but the MADO LOOP orchestrator owns the final route. Worker models cannot recursively add specialists. A Judge may independently use another installed specialist for review, but that skill must also be recorded in the receipt.
+The Scout may propose specialist skills, but the MADO LOOP orchestrator owns the final route. Worker models cannot recursively add specialists. A Judge may independently use another installed specialist for review, but that skill must also be recorded in the final task receipt.
 
 ## Receipt contract
 
-Every bounded task receipt should include `skills_used`, even when empty:
+Every final bounded MADO LOOP task receipt should include `skills_used`, even when empty:
 
 ```yaml
 receipt:
@@ -30,6 +30,8 @@ receipt:
 ```
 
 Use canonical registry ids. Do not record internal references, worker roles, providers, or ordinary tools as skills. Those continue to use their existing evidence fields.
+
+An OVP `mutation receipt` is a lower-level evidence bundle exchanged between one mutation worker and the orchestrator. It is not the final bounded MADO LOOP task receipt and therefore does not replace or redefine this provenance contract. The orchestrator aggregates specialist usage across its own work and accepted worker evidence into the final `skills_used` field. Provider/runtime metadata stays in its separate evidence fields.
 
 For unavailable recommendations, keep a separate note rather than pretending they ran:
 

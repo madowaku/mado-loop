@@ -87,6 +87,88 @@ NEXT REVIEW_READY
 
 The contract is a dispatch envelope, not proof. `CHECK` tells the worker what evidence to collect; it does not transfer acceptance authority.
 
+## First-party runtime
+
+`scripts/ovp_runtime.py` is the first-party implementation of the mutation boundary. It stores task state under the repository's Git common directory, outside the tracked working tree, and creates worker worktrees under a bounded workspace root. The default workspace root is the sibling `.mado-loop-worktrees/<repo-name>/` directory. The runtime uses atomic manifests and a per-task lock so concurrent state transitions do not silently overwrite each other.
+
+The current runtime deliberately requires mutation work to be committed before `REVIEW_READY`. This keeps review, integration, rollback, and branch identity deterministic. Proposal-only workers remain available when a committed isolated mutation lane is unnecessary.
+
+Preflight only:
+
+```powershell
+python .agents/skills/mado-loop/scripts/ovp_runtime.py preflight `
+  --repo . `
+  --base-ref HEAD `
+  --require-tool python `
+  --pretty
+```
+
+Prepare one bounded mutation task. Required acceptance checks use stable IDs so the receipt must report the same contract:
+
+```powershell
+python .agents/skills/mado-loop/scripts/ovp_runtime.py prepare `
+  --repo . `
+  --task-id KAN-024 `
+  --goal "Player dash works without changing enemy behavior" `
+  --include "player/" `
+  --exclude "enemy/" `
+  --acceptance "unit=dash unit tests pass" `
+  --optional-acceptance "visual=dash capture is legible" `
+  --domain GAMEPLAY `
+  --domain CODE `
+  --pretty
+```
+
+The command creates a `mado/ovp/<task-id>` branch, an isolated worktree, a manifest, and `AI_CREOLE.txt`. Provider-specific dispatch remains separate. The orchestrator may record dispatch progress with `mark --state DISPATCHED` and `mark --state WORKING`.
+
+A mutation worker must commit its bounded change, leave the worktree clean, then submit the exact acceptance IDs:
+
+```powershell
+python .agents/skills/mado-loop/scripts/ovp_runtime.py receipt `
+  --repo <worker-worktree> `
+  --task-id KAN-024 `
+  --summary "Implemented dash and regression test" `
+  --check "unit=PASS" `
+  --optional-check "visual=PASS" `
+  --evidence "unit=python -m unittest tests.test_dash" `
+  --evidence "visual=artifacts/dash.png" `
+  --pretty
+```
+
+The runtime verifies branch identity, a clean committed worker state, include/exclude scope, and receipt/check identity before moving the task to `REVIEW_READY`.
+
+Acceptance requires an explicit orchestrator assertion that the diff was inspected. Structural gates are re-evaluated at review time so a worker cannot change HEAD after submitting its receipt and still be accepted:
+
+```powershell
+python .agents/skills/mado-loop/scripts/ovp_runtime.py review `
+  --repo . `
+  --task-id KAN-024 `
+  --decision accept `
+  --reason "Diff and evidence satisfy bounded task" `
+  --inspected-diff `
+  --pretty
+```
+
+Use `--decision rework` or `--decision reject` when the result should not be accepted. An accepted task may then be integrated with `merge` or `cherry-pick`. Failed integration is aborted and leaves the task `ACCEPTED` for a bounded recovery decision.
+
+```powershell
+python .agents/skills/mado-loop/scripts/ovp_runtime.py integrate --repo . --task-id KAN-024 --strategy merge --pretty
+```
+
+Integration is still not completion. Run the normal MADO LOOP P0-P5 path, persist its schema-v1.1 result JSON, then bind that result to the exact integrated HEAD:
+
+```powershell
+python .agents/skills/mado-loop/scripts/ovp_runtime.py proof `
+  --repo . `
+  --task-id KAN-024 `
+  --result artifacts/result.json `
+  --pretty
+```
+
+`PASS` or `WARN` proof maps to `PROVEN`, `FAIL` maps to `FAILED`, and unresolved or skipped required proof maps to `UNKNOWN`. If leader HEAD changed after integration, proof binding is rejected rather than attached to the wrong project state.
+
+After a final state or rejection, `cleanup` removes only the recorded owned worktree and refuses a dirty workspace. Worker branches are preserved by default. `--delete-branch` attempts only Git's safe `branch -d`; it never force-deletes an unmerged branch.
+
 ## Evidence bundle
 
 A mutation worker returns a bounded evidence bundle when entering `REVIEW_READY`:
