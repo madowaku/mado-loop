@@ -77,12 +77,13 @@ def _hard_delta(
 
 
 def _unknown_count(result: Mapping[str, Any]) -> int:
-    count = 0
-    for key in ("proof", "acceptance", "regressions"):
+    """Count unique required unknown gates; regressions duplicate invariant acceptance ids."""
+    unknown_ids: set[tuple[str, str]] = set()
+    for key in ("proof", "acceptance"):
         for item in _outcomes(result, key).values():
             if bool(item.get("required", False)) and item.get("status") == "UNKNOWN":
-                count += 1
-    return count
+                unknown_ids.add((key, str(item.get("id", ""))))
+    return len(unknown_ids)
 
 
 def _metric(result: Mapping[str, Any], key: str) -> int | None:
@@ -140,7 +141,12 @@ def compare_results(champion: Mapping[str, Any], challenger: Mapping[str, Any]) 
     proof_delta = _hard_delta(champion, challenger, key="proof")
     acceptance_delta = _hard_delta(champion, challenger, key="acceptance")
     regression_delta = _hard_delta(champion, challenger, key="regressions")
-    hard = [*proof_delta, *acceptance_delta, *regression_delta]
+    regression_ids = {item["id"] for item in regression_delta}
+    hard = [
+        *proof_delta,
+        *(item for item in acceptance_delta if item["id"] not in regression_ids),
+        *regression_delta,
+    ]
     hard_regressions = [item for item in hard if item["delta"] < 0]
     hard_improvements = [item for item in hard if item["delta"] > 0]
 
