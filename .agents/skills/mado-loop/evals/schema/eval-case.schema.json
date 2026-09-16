@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/madowaku/mado-loop/blob/main/.agents/skills/mado-loop/evals/schema/eval-case.schema.json",
+  "title": "MADO EVALS Eval Case v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "domains",
+    "task_file",
+    "required_proof",
+    "acceptance",
+    "policy"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160
+    },
+    "domains": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "CODE",
+          "GAMEPLAY",
+          "UI",
+          "SPRITE",
+          "IMAGE",
+          "ANIMATION",
+          "ASSET_INTEGRATION",
+          "REFERENCE_TO_UI",
+          "PIXEL_ART",
+          "PLAYTEST",
+          "RELEASE"
+        ]
+      }
+    },
+    "task_file": {
+      "type": "string",
+      "pattern": "^(?![/\\\\])(?!.*(?:^|[/\\\\])\.\.(?:[/\\\\]|$)).+\\.md$"
+    },
+    "fixture": {
+      "type": ["string", "null"],
+      "pattern": "^(?![/\\\\])(?!.*(?:^|[/\\\\])\.\.(?:[/\\\\]|$)).+$"
+    },
+    "tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+      },
+      "default": []
+    },
+    "required_proof": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["P0", "P1", "P2", "P3", "P4", "P5"]
+      }
+    },
+    "acceptance": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/acceptanceCheck"
+      }
+    },
+    "policy": {
+      "$ref": "#/$defs/policy"
+    },
+    "expected_paths": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(?![/\\\\])(?!.*(?:^|[/\\\\])\.\.(?:[/\\\\]|$)).+$"
+      },
+      "default": []
+    }
+  },
+  "$defs": {
+    "acceptanceCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "required", "description"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"
+        },
+        "kind": {
+          "enum": ["proof", "test", "artifact", "evidence", "invariant"]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 500
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sensitivity", "network", "mutation", "timeout_seconds"],
+      "properties": {
+        "sensitivity": {
+          "enum": ["public", "private", "secret"]
+        },
+        "network": {
+          "enum": ["normal", "restricted", "offline"]
+        },
+        "mutation": {
+          "enum": ["none", "isolated_worktree"]
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "allowed_platforms": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["windows", "linux", "macos"]
+          },
+          "default": ["windows"]
+        }
+      }
+    }
+  }
+}
