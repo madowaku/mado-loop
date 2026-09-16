@@ -1,0 +1,32 @@
+{
+  "schema_version": "0.1",
+  "id": "gameplay.stable-transition",
+  "title": "Stable input-driven gameplay transition",
+  "domains": ["GAMEPLAY"],
+  "task_file": "task.md",
+  "fixture": "fixture",
+  "tags": ["behavior", "godot", "p3", "regression"],
+  "required_proof": ["P3"],
+  "acceptance": [
+    {
+      "id": "gameplay.transition-pass",
+      "kind": "test",
+      "required": true,
+      "description": "The activate action moves the fixture from READY to ACTIVATED exactly once."
+    },
+    {
+      "id": "gameplay.repeatable",
+      "kind": "invariant",
+      "required": true,
+      "description": "Repeated runs produce the same proof status and check outcomes."
+    }
+  ],
+  "policy": {
+    "sensitivity": "public",
+    "network": "offline",
+    "mutation": "none",
+    "timeout_seconds": 120,
+    "allowed_platforms": ["windows", "linux"]
+  },
+  "expected_paths": ["runner.json"]
+}
