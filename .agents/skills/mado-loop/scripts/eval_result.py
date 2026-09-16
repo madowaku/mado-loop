@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any, Iterable, Mapping, Sequence
 
 SCHEMA_VERSION = "0.1"
@@ -110,9 +111,15 @@ def _normalize_evidence(raw: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]
     for item in raw:
         _expect(isinstance(item, Mapping), "evidence entries must be objects")
         kind = str(item.get("kind", ""))
-        path = str(item.get("path", ""))
+        raw_path = str(item.get("path", "")).strip()
         _expect(kind in allowed_kinds, f"invalid evidence kind: {kind!r}")
-        _expect(path and not path.startswith(("/", "\\")) and ".." not in path.replace("\\", "/").split("/"), "evidence path must be relative and contained")
+        _expect(bool(raw_path), "evidence path is required")
+        posix = PurePosixPath(raw_path)
+        windows = PureWindowsPath(raw_path)
+        _expect(not posix.is_absolute(), "evidence path must be relative and contained")
+        _expect(not windows.is_absolute() and windows.drive == "", "evidence path must be relative and contained")
+        _expect(".." not in posix.parts and ".." not in windows.parts, "evidence path must be relative and contained")
+        path = raw_path.replace("\\", "/")
         sha256 = item.get("sha256")
         if sha256 is not None:
             _expect(bool(re.fullmatch(r"[a-f0-9]{64}", str(sha256))), "evidence sha256 must be lowercase hex")
