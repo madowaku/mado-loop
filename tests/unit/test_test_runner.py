@@ -54,7 +54,7 @@ class TestUnifiedRunner(unittest.TestCase):
             {name: _case("pass") for name in run_tests.MANDATORY_MODULES}
         )
         self.assertTrue(summary.passed)
-        self.assertEqual(summary.tests_run, 4)
+        self.assertEqual(summary.tests_run, len(run_tests.MANDATORY_MODULES))
         self.assertEqual(summary.to_dict()["status"], "PASS")
 
     def test_failure_is_non_green_without_stopping_later_modules(self) -> None:
@@ -62,7 +62,7 @@ class TestUnifiedRunner(unittest.TestCase):
         cases[run_tests.MANDATORY_MODULES[1]] = _case("failure")
         summary = self._run(cases)
         self.assertFalse(summary.passed)
-        self.assertEqual(summary.tests_run, 4)
+        self.assertEqual(summary.tests_run, len(run_tests.MANDATORY_MODULES))
         self.assertEqual(summary.modules[1].failures, 1)
 
     def test_error_is_non_green(self) -> None:
