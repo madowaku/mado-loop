@@ -1,0 +1,7 @@
+{
+  "schema_version": "0.1",
+  "adapter": "external_receipt",
+  "config": {
+    "required_evidence_kinds": ["report", "screenshot"]
+  }
+}
