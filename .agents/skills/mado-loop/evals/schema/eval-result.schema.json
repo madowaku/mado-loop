@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/madowaku/mado-loop/blob/main/.agents/skills/mado-loop/evals/schema/eval-result.schema.json",
+  "title": "MADO EVALS Eval Result v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "case_id",
+    "case_digest",
+    "candidate",
+    "status",
+    "proof_status",
+    "proof",
+    "acceptance",
+    "regressions",
+    "metrics",
+    "failure_signatures",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": {"const": "0.1"},
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{2,127}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"
+    },
+    "case_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "revision": {"type": ["string", "null"], "maxLength": 160},
+        "digest": {"type": ["string", "null"], "pattern": "^(sha256:[a-f0-9]{64})?$"}
+      }
+    },
+    "status": {"enum": ["PASS", "WARN", "UNKNOWN", "FAIL"]},
+    "proof_status": {"enum": ["PROVEN", "PARTIAL", "UNPROVEN", "UNKNOWN", "FAILED"]},
+    "proof": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/outcome"}
+    },
+    "acceptance": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/outcome"}
+    },
+    "regressions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/outcome"}
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repair_cycles", "tokens", "wall_time_ms"],
+      "properties": {
+        "repair_cycles": {"type": "integer", "minimum": 0},
+        "tokens": {"type": ["integer", "null"], "minimum": 0},
+        "wall_time_ms": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "failure_signatures": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "path"],
+        "properties": {
+          "kind": {"enum": ["test", "log", "screenshot", "video", "artifact", "receipt", "report", "other"]},
+          "path": {
+            "type": "string",
+            "pattern": "^(?![/\\\\])(?!.*(?:^|[/\\\\])\.\.(?:[/\\\\]|$)).+$"
+          },
+          "sha256": {
+            "type": ["string", "null"],
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": {"type": ["string", "number", "boolean", "null"]},
+      "default": {}
+    }
+  },
+  "$defs": {
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "required"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+        },
+        "status": {"enum": ["PASS", "WARN", "UNKNOWN", "FAIL"]},
+        "required": {"type": "boolean"},
+        "evidence": {
+          "type": "array",
+          "items": {"type": "string"},
+          "default": []
+        },
+        "detail": {"type": ["string", "null"], "maxLength": 1000}
+      }
+    }
+  }
+}
