@@ -1,0 +1,32 @@
+{
+  "schema_version": "0.1",
+  "id": "ui.visible-control",
+  "title": "Visible menu layout across two viewports",
+  "domains": ["UI"],
+  "task_file": "task.md",
+  "fixture": "fixture",
+  "tags": ["godot", "layout", "p2", "ui"],
+  "required_proof": ["P2"],
+  "acceptance": [
+    {
+      "id": "ui.layout.two-viewports",
+      "kind": "evidence",
+      "required": true,
+      "description": "The menu produces passing layout evidence at 1280x720 and 800x600."
+    },
+    {
+      "id": "ui.no-overlap",
+      "kind": "invariant",
+      "required": true,
+      "description": "The layout proof reports no clipping, overlap, overflow, or offscreen violations."
+    }
+  ],
+  "policy": {
+    "sensitivity": "public",
+    "network": "offline",
+    "mutation": "none",
+    "timeout_seconds": 120,
+    "allowed_platforms": ["windows", "linux"]
+  },
+  "expected_paths": ["runner.json"]
+}
