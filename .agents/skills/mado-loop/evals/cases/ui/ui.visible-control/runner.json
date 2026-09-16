@@ -1,0 +1,8 @@
+{
+  "schema_version": "0.1",
+  "adapter": "godot_layout",
+  "config": {
+    "scenarios": ["valid_1280.json", "valid_800.json"],
+    "repeat": 1
+  }
+}
