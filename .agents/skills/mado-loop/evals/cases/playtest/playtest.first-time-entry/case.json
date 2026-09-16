@@ -1,0 +1,37 @@
+{
+  "schema_version": "0.1",
+  "id": "playtest.first-time-entry",
+  "title": "First-time player entry observation",
+  "domains": ["PLAYTEST"],
+  "task_file": "task.md",
+  "tags": ["black-box", "external-receipt", "playtest"],
+  "required_proof": ["P3"],
+  "acceptance": [
+    {
+      "id": "playtest.first-screen-observed",
+      "kind": "evidence",
+      "required": true,
+      "description": "The external observer records the first visible game screen with screenshot evidence."
+    },
+    {
+      "id": "playtest.input-path-completed",
+      "kind": "evidence",
+      "required": true,
+      "description": "The external observer records a bounded first-time input path reaching the intended interactive state."
+    },
+    {
+      "id": "playtest.no-blocking-error",
+      "kind": "invariant",
+      "required": true,
+      "description": "No blocking crash, frozen input state, or unrecoverable first-entry error is observed."
+    }
+  ],
+  "policy": {
+    "sensitivity": "public",
+    "network": "offline",
+    "mutation": "none",
+    "timeout_seconds": 300,
+    "allowed_platforms": ["windows"]
+  },
+  "expected_paths": ["runner.json"]
+}
