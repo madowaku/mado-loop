@@ -21,6 +21,7 @@ MANDATORY_MODULES = (
     "tests.integration.test_p2_p3",
     "tests.integration.test_p4",
     "tests.integration.test_p5",
+    "tests.integration.test_mado_evals",
 )
 
 
