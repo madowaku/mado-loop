@@ -7,7 +7,7 @@ import hashlib
 import json
 import re
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Iterable, Mapping, Sequence
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -69,11 +69,15 @@ def _strict_keys(payload: Mapping[str, Any], *, allowed: set[str], required: set
 
 def _safe_relative(value: Any, *, label: str) -> Path:
     _expect(isinstance(value, str) and bool(value.strip()), f"{label} must be a non-empty string")
-    path = Path(value)
-    _expect(not path.is_absolute(), f"{label} must be relative")
-    _expect(".." not in path.parts, f"{label} must not traverse parents")
-    _expect(str(path) not in {".", ""}, f"{label} must name a path")
-    return path
+    raw = value.strip()
+    posix = PurePosixPath(raw)
+    windows = PureWindowsPath(raw)
+    _expect(not posix.is_absolute(), f"{label} must be relative")
+    _expect(not windows.is_absolute() and windows.drive == "", f"{label} must be relative")
+    _expect(".." not in posix.parts and ".." not in windows.parts, f"{label} must not traverse parents")
+    normalized = Path(raw)
+    _expect(str(normalized) not in {".", ""}, f"{label} must name a path")
+    return normalized
 
 
 def _inside(base: Path, path: Path, *, label: str) -> Path:
@@ -111,19 +115,30 @@ def _sha256_file(path: Path) -> tuple[str, int]:
 
 
 def _manifest_entries(case_dir: Path, target: Path) -> list[dict[str, Any]]:
+    case_root = case_dir.resolve()
     if target.is_file():
-        digest, size = _sha256_file(target)
+        resolved = target.resolve()
+        try:
+            relative = resolved.relative_to(case_root)
+        except ValueError as exc:
+            raise ValueError(f"manifest target escapes the eval case directory: {target}") from exc
+        digest, size = _sha256_file(resolved)
         return [{
-            "path": target.relative_to(case_dir.resolve()).as_posix(),
+            "path": relative.as_posix(),
             "sha256": digest,
             "size_bytes": size,
         }]
     _expect(target.is_dir(), f"manifest target does not exist: {target}")
     entries: list[dict[str, Any]] = []
     for child in sorted((item for item in target.rglob("*") if item.is_file()), key=lambda item: item.as_posix()):
-        digest, size = _sha256_file(child)
+        resolved = child.resolve()
+        try:
+            relative = resolved.relative_to(case_root)
+        except ValueError as exc:
+            raise ValueError(f"manifest file escapes the eval case directory: {child}") from exc
+        digest, size = _sha256_file(resolved)
         entries.append({
-            "path": child.relative_to(case_dir.resolve()).as_posix(),
+            "path": relative.as_posix(),
             "sha256": digest,
             "size_bytes": size,
         })
