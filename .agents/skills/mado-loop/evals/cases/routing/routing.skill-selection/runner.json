@@ -1,0 +1,9 @@
+{
+  "schema_version": "0.1",
+  "adapter": "skill_router",
+  "config": {
+    "expected_recommended": ["godot-ui-control", "game-ui-ux"],
+    "forbidden_recommended": ["develop-web-game", "threejs-game-ui-designer", "higgsfield-game-generation"],
+    "include_manual": false
+  }
+}
