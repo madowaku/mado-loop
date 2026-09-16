@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/madowaku/mado-loop/blob/main/.agents/skills/mado-loop/evals/schema/eval-runner.schema.json",
+  "title": "MADO EVALS Runner v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "adapter", "config"],
+  "properties": {
+    "schema_version": {"const": "0.1"},
+    "adapter": {
+      "enum": ["skill_router", "godot_layout", "godot_behavior", "external_receipt"]
+    },
+    "config": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"adapter": {"const": "skill_router"}}},
+      "then": {
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "available": {"type": ["array", "null"], "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"}},
+              "expected_recommended": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"}},
+              "forbidden_recommended": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"}},
+              "include_manual": {"type": "boolean"}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"adapter": {"const": "godot_layout"}}},
+      "then": {
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["scenarios"],
+            "properties": {
+              "scenarios": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+              "repeat": {"type": "integer", "minimum": 1, "maximum": 3}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"adapter": {"const": "godot_behavior"}}},
+      "then": {
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["scenario"],
+            "properties": {
+              "scenario": {"type": "string"},
+              "repeat": {"type": "integer", "minimum": 1, "maximum": 3}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"adapter": {"const": "external_receipt"}}},
+      "then": {
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "required_evidence_kinds": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {"enum": ["test", "log", "screenshot", "video", "artifact", "receipt", "report", "other"]}
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
