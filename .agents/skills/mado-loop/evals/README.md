@@ -6,24 +6,28 @@ The design contract is in [`docs/MADO_EVALS_SPEC.md`](../../../../docs/MADO_EVAL
 
 ## v0.1 foundation
 
-Phase 0 provides:
+The deterministic foundation provides:
 
 - `schema/eval-case.schema.json` - case contract;
 - `schema/eval-result.schema.json` - run-result contract;
+- `schema/eval-runner.schema.json` - typed allowlisted runner contract;
 - `scripts/validate_eval_case.py` - strict validation, input manifesting, and SHA-256 case digests;
-- unit coverage in `tests/unit/test_validate_eval_case.py`.
+- `scripts/eval_result.py` - canonical proof/acceptance result construction;
+- `scripts/compare_eval_results.py` - gate-first champion/challenger comparison;
+- `scripts/run_eval_case.py` - isolated fixture replay through allowlisted adapters.
 
-A case has this shape:
+A replayable case has this shape:
 
 ```text
 cases/<domain>/<case-id>/
   case.json
+  runner.json     # must be listed in expected_paths, so it is digest-bound
   task.md
-  fixture/       # optional
-  expected/      # optional
+  fixture/        # optional immutable replay input
+  expected/       # optional golden/non-secret deterministic assets
 ```
 
-Validate a case before any runner or model call:
+Validate a case before execution:
 
 ```powershell
 python .agents/skills/mado-loop/scripts/validate_eval_case.py `
@@ -33,14 +37,55 @@ python .agents/skills/mado-loop/scripts/validate_eval_case.py `
 
 The validator emits a canonical case payload, a manifest of the task/fixture/expected files, and a `sha256:` case digest. The digest changes when any bound input changes.
 
+## Typed Phase 1 runner
+
+`run_eval_case.py` does not execute arbitrary commands from the corpus. `runner.json` chooses one allowlisted adapter:
+
+- `skill_router` - deterministic MADO LOOP skill routing, no network/model call;
+- `godot_layout` - P2 layout evidence through the existing Godot layout proof adapter;
+- `godot_behavior` - P3 state-transition evidence through the existing behavior proof adapter;
+- `external_receipt` - imports an explicit receipt from a black-box observer such as game-test-player without granting that observer proof authority.
+
+The runner copies fixture inputs into `.mado-loop/evals/runs/<run-id>/workspace` before observation. Generated logs/reports live under that run directory and are not committed by default.
+
+Example offline routing replay:
+
+```powershell
+python .agents/skills/mado-loop/scripts/run_eval_case.py `
+  .agents/skills/mado-loop/evals/cases/routing/routing.skill-selection/case.json `
+  --candidate-id current `
+  --pretty
+```
+
+Example Godot replay when `MADO_GODOT_BIN` is configured:
+
+```powershell
+python .agents/skills/mado-loop/scripts/run_eval_case.py `
+  .agents/skills/mado-loop/evals/cases/ui/ui.visible-control/case.json `
+  --candidate-id current `
+  --pretty
+```
+
+Adapter execution failures are recorded as `UNKNOWN` with `runner-error.json` evidence. They do not become product `FAIL` merely because the observation infrastructure failed.
+
+## Initial corpus
+
+Phase 1 includes:
+
+1. `routing.skill-selection` - offline semantic skill selection and unrelated-skill invariant;
+2. `ui.visible-control` - P2 layout evidence at wide and compact viewports;
+3. `gameplay.stable-transition` - repeated P3 input/state-transition proof;
+4. `playtest.first-time-entry` - external black-box receipt boundary for future game-test-player integration.
+
+The first three can be replayed without model-as-judge authority. The playtest case intentionally requires an external evidence receipt.
+
 ## Boundary with live feedback
 
 Eval replays must not be written to `.mado-loop/skill_feedback.jsonl` as though they were real user-task receipts. Live feedback and replay evals are separate signals with separate provenance.
 
-## Planned next slices
+## Next slices
 
-1. `eval_result.py` to build canonical result records from proof and acceptance evidence.
-2. `compare_eval_results.py` for lexicographic champion/challenger comparison.
-3. isolated eval runner adapters.
-4. a small real-world corpus derived from MADO LOOP failure modes.
-5. optional routing qualification after deterministic comparison is stable.
+1. suite-level champion/challenger aggregation across selected case sets;
+2. first direct game-test-player receipt producer;
+3. mutation-enabled candidate runs through an explicitly isolated OVP worktree lane;
+4. optional routing qualification only after deterministic comparison and suite replay are stable.
