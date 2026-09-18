@@ -290,16 +290,18 @@ PLAYTEST  -> engine.runtime.execute
 RELEASE   -> artifact.release.audit
 ```
 
-Proof expectations are cumulative in G3 v1:
+Proof expectations are claim-relevant in G3 v1. Higher proof keeps the lower gates relevant to that claim, but does not blindly require every lower modality.
 
 ```text
-P0 -> evidence.static
-P1 -> engine.runtime.execute
-P2 -> evidence.layout
-P3 -> evidence.behavior
-P4 -> runtime execution + screenshot capture
-P5 -> release audit
+P0 -> static evidence
+P1 -> static + runtime execution
+P2 -> static + runtime + layout evidence
+P3 -> static + runtime + behavior evidence
+P4 -> static + runtime + screenshot capture
+P5 -> static + runtime + artifact export + release audit
 ```
+
+This mirrors the proof ladder rule that irrelevant levels may be skipped explicitly. A P5 release candidate therefore does not automatically require P4 motion capture.
 
 These mappings are deliberately inspectable policy, not model judgment.
 
