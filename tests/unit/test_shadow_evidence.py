@@ -21,6 +21,7 @@ from shadow_evidence import (  # noqa: E402
     event_json,
     load_events,
     materialize_receipt,
+    materialize_all,
     normalize_outcome,
     validate_event,
     _parser,
@@ -377,6 +378,33 @@ class ShadowEvidenceTests(unittest.TestCase):
         capture["payload"]["shadow_digest"] = "sha256:" + "0" * 64
         with self.assertRaisesRegex(ShadowEvidenceError, "shadow_digest mismatch"):
             validate_event(capture)
+
+    def test_materializer_rejects_orphan_join_and_cross_event_candidate_tamper(self) -> None:
+        capture = build_capture_event(
+            receipt_id="receipt.g4.009",
+            shadow_compare=shadow(),
+            observed_at="2026-09-18T00:01:00Z",
+        )
+        joined = build_outcome_event(
+            receipt_id="receipt.g4.009",
+            capture_event=capture,
+            outcome=real_result(),
+            outcome_ref="proof:run-009",
+            route_kind="g3_candidate",
+            strategy="direct-agent-with-tools",
+            execution_ref="canary:run-009",
+            candidate_id="strategy.direct-agent-with-tools",
+            observed_at="2026-09-18T00:02:00Z",
+        )
+
+        with self.assertRaisesRegex(ShadowEvidenceError, "exactly one SHADOW_CAPTURED"):
+            materialize_all([joined])
+
+        tampered = json.loads(json.dumps(joined))
+        tampered["payload"]["execution"]["candidate_id"] = "strategy.not-captured"
+        validate_event(tampered)
+        with self.assertRaisesRegex(ShadowEvidenceError, "absent from capture"):
+            materialize_receipt([capture, tampered], "receipt.g4.009")
 
     def test_join_to_unknown_receipt_is_rejected_by_materializer(self) -> None:
         with self.assertRaisesRegex(ShadowEvidenceError, "exactly one"):
