@@ -638,6 +638,14 @@ def materialize_receipt(events: Sequence[Mapping[str, Any]], receipt_id: str) ->
             joined["payload"]["shadow_digest"] == capture["payload"]["shadow_digest"],
             "joined outcome is bound to a different shadow digest",
         )
+        execution = joined["payload"]["execution"]
+        if execution["route_kind"] == "g3_candidate":
+            candidates = {item["id"]: item for item in capture["payload"]["g3_candidates"]}
+            candidate_id = execution["candidate_id"]
+            _expect(candidate_id in candidates, "joined outcome references a G3 candidate absent from capture")
+            selected = candidates[candidate_id]
+            _expect(selected["strategy"] == execution["strategy"], "joined G3 strategy differs from captured candidate")
+            _expect(selected["state"] != "BLOCKED", "joined outcome references a G3 candidate that was BLOCKED at capture time")
     return {
         "schema_version": SCHEMA_VERSION,
         "receipt_id": capture["receipt_id"],
@@ -655,7 +663,7 @@ def materialize_receipt(events: Sequence[Mapping[str, Any]], receipt_id: str) ->
 
 
 def materialize_all(events: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    receipt_ids = sorted({str(item["receipt_id"]) for item in events if item["event_type"] == "SHADOW_CAPTURED"})
+    receipt_ids = sorted({str(item["receipt_id"]) for item in events})
     return [materialize_receipt(events, receipt_id) for receipt_id in receipt_ids]
 
 
