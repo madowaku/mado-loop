@@ -289,6 +289,7 @@ def normalize_outcome(value: Any) -> dict[str, Any]:
             _expect(isinstance(artifact, Mapping) and set(artifact) == set(result_contract.ARTIFACT_KEYS), "result-v1.1 artifact shape is invalid")
         _expect(isinstance(errors, list) and isinstance(warnings, list) and isinstance(unknowns, list), "result-v1.1 findings must be arrays")
         _expect(isinstance(task_domains, list), "result-v1.1 task_domains must be an array")
+        _expect(all(str(item) in result_contract.TASK_DOMAINS for item in task_domains), "result-v1.1 task_domains contains invalid values")
         return {
             "source_kind": "result-v1.1",
             "source_digest": source_digest,
@@ -473,16 +474,27 @@ def _atomic_write(path: Path, text: str) -> None:
             temporary.unlink()
 
 
+def _event_semantic_identity(event: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": event["schema_version"],
+        "event_id": event["event_id"],
+        "event_type": event["event_type"],
+        "receipt_id": event["receipt_id"],
+        "payload": event["payload"],
+    }
+
+
 def append_event(path: str | Path, event: Mapping[str, Any]) -> dict[str, Any]:
     ledger = Path(path)
     normalized = validate_event(event)
     canonical = event_json(normalized)
     events = load_events(ledger)
+    semantic = _event_semantic_identity(normalized)
     for existing in events:
         if existing["event_id"] != normalized["event_id"]:
             continue
-        if event_json(existing) == canonical:
-            return {"status": "UNCHANGED", "event": normalized}
+        if _event_semantic_identity(existing) == semantic:
+            return {"status": "UNCHANGED", "event": existing}
         raise ShadowEvidenceError(f"conflicting duplicate event_id: {normalized['event_id']}")
     lines = [event_json(item) for item in events]
     lines.append(canonical)
@@ -588,11 +600,13 @@ def _parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     capture = sub.add_parser("capture", help="record one bounded G3 shadow comparison")
+    capture.add_argument("--pretty", action="store_true", default=argparse.SUPPRESS)
     capture.add_argument("--receipt-id", required=True)
     capture.add_argument("--shadow", required=True)
     capture.add_argument("--observed-at")
 
     join = sub.add_parser("join", help="join one real execution outcome to an existing shadow capture")
+    join.add_argument("--pretty", action="store_true", default=argparse.SUPPRESS)
     join.add_argument("--receipt-id", required=True)
     join.add_argument("--outcome", required=True)
     join.add_argument("--outcome-ref", required=True)
@@ -603,6 +617,7 @@ def _parser() -> argparse.ArgumentParser:
     join.add_argument("--observed-at")
 
     materialize = sub.add_parser("materialize", help="materialize joined shadow receipts")
+    materialize.add_argument("--pretty", action="store_true", default=argparse.SUPPRESS)
     materialize.add_argument("--receipt-id")
 
     return parser
