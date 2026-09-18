@@ -661,7 +661,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 candidate_id=args.candidate_id,
                 observed_at=args.observed_at,
             )
-            if existing_join is not None and event_json(existing_join) != event_json(event):
+            if existing_join is not None and _event_semantic_identity(existing_join) != _event_semantic_identity(event):
                 raise ShadowEvidenceError(f"receipt already has a different joined outcome: {args.receipt_id}")
             result = append_event(ledger, event)
             _write_payload(result, pretty=args.pretty)
