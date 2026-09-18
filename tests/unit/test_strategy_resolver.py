@@ -72,6 +72,7 @@ def base_registry(*extras: dict) -> dict:
                 "evidence.static",
                 "evidence.layout",
                 "evidence.behavior",
+                "artifact.export",
             ],
             probe={"type": "always"},
         ),
@@ -285,6 +286,33 @@ class StrategyResolverTests(unittest.TestCase):
         self.assertEqual("CONDITIONAL", candidate(minimal, "adaptive-swarm")["state"])
         self.assertIn("coordination_not_preferred", candidate(minimal, "adaptive-swarm")["reasons"])
         self.assertEqual("READY", candidate(parallel, "adaptive-swarm")["state"])
+
+    def test_p5_release_does_not_require_motion_capture(self) -> None:
+        audit = capability(
+            "observer.release-audit",
+            kind="observer",
+            domains=["RELEASE"],
+            features=["artifact.release.audit"],
+            probe={"type": "always"},
+        )
+        registry = base_registry(audit)
+        snapshot = build_snapshot(registry, observed_at="2026-09-18T00:00:00Z")
+        release_intent = {
+            "schema_version": "1.0",
+            "id": "release-001",
+            "goal": "Audit and produce a release candidate",
+            "domains": ["RELEASE"],
+            "work_mode": "release",
+            "required_proof": "P5",
+            "sensitivity": "private",
+            "acceptance": [{"id": "release.ok", "required": True, "claim": "release candidate is audited"}],
+            "preferences": {"coordination": "minimal"},
+        }
+        result = build_strategy_candidates(release_intent, authority(), snapshot, registry)
+        direct = candidate(result, "direct-agent-with-tools")
+        self.assertEqual("READY", direct["state"])
+        self.assertNotIn("screenshot.capture", direct["required_features"])
+        self.assertIn("artifact.release.audit", direct["required_features"])
 
     def test_sensitivity_ceiling_blocks_all_candidates(self) -> None:
         registry = base_registry()
