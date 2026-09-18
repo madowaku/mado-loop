@@ -52,11 +52,11 @@ DOMAIN_REQUIRED_FEATURES = {
 
 PROOF_REQUIRED_FEATURES = {
     "P0": ("evidence.static",),
-    "P1": ("engine.runtime.execute",),
-    "P2": ("evidence.layout",),
-    "P3": ("evidence.behavior",),
-    "P4": ("engine.runtime.execute", "screenshot.capture"),
-    "P5": ("artifact.release.audit",),
+    "P1": ("evidence.static", "engine.runtime.execute"),
+    "P2": ("evidence.static", "engine.runtime.execute", "evidence.layout"),
+    "P3": ("evidence.static", "engine.runtime.execute", "evidence.behavior"),
+    "P4": ("evidence.static", "engine.runtime.execute", "screenshot.capture"),
+    "P5": ("evidence.static", "engine.runtime.execute", "artifact.export", "artifact.release.audit"),
 }
 
 PERMISSION_KEYS = (
@@ -262,14 +262,10 @@ def validate_snapshot(value: Any) -> dict[str, Any]:
 
 
 def _proof_features(level: str) -> tuple[str, ...]:
-    # Proof levels are cumulative in evidence expectations.
-    index = PROOF_LEVELS.index(level)
-    ordered: list[str] = []
-    for proof in PROOF_LEVELS[: index + 1]:
-        for feature in PROOF_REQUIRED_FEATURES[proof]:
-            if feature not in ordered:
-                ordered.append(feature)
-    return tuple(ordered)
+    # Higher proof levels include the lower gates relevant to the claim, not
+    # every lower proof modality unconditionally. For example, release proof
+    # does not inherently require motion capture.
+    return PROOF_REQUIRED_FEATURES[level]
 
 
 def required_features(intent: Mapping[str, Any]) -> tuple[str, ...]:
