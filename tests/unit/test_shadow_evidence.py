@@ -23,6 +23,7 @@ from shadow_evidence import (  # noqa: E402
     materialize_receipt,
     normalize_outcome,
     validate_event,
+    _parser,
 )
 from common.result import make_artifact, make_check, make_result  # noqa: E402
 
@@ -299,24 +300,33 @@ class ShadowEvidenceTests(unittest.TestCase):
                 observed_at="2026-09-18T00:02:00Z",
             )
 
-    def test_append_is_idempotent_and_conflicting_duplicate_is_rejected(self) -> None:
+    def test_append_is_semantically_idempotent_and_conflicting_duplicate_is_rejected(self) -> None:
         capture = build_capture_event(
             receipt_id="receipt.g4.006",
             shadow_compare=shadow(),
             observed_at="2026-09-18T00:01:00Z",
         )
+        retried = build_capture_event(
+            receipt_id="receipt.g4.006",
+            shadow_compare=shadow(),
+            observed_at="2026-09-18T00:03:00Z",
+        )
+        conflict = build_capture_event(
+            receipt_id="receipt.g4.006",
+            shadow_compare=shadow(delegate=False),
+            observed_at="2026-09-18T00:04:00Z",
+        )
         with tempfile.TemporaryDirectory() as temporary:
             ledger = Path(temporary) / "shadow.jsonl"
             first = append_event(ledger, capture)
-            second = append_event(ledger, capture)
+            second = append_event(ledger, retried)
             self.assertEqual("APPENDED", first["status"])
             self.assertEqual("UNCHANGED", second["status"])
+            self.assertEqual("2026-09-18T00:01:00Z", second["event"]["observed_at"])
             self.assertEqual(1, len(load_events(ledger)))
 
-            changed = dict(capture)
-            changed["observed_at"] = "2026-09-18T00:03:00Z"
             with self.assertRaisesRegex(ShadowEvidenceError, "conflicting duplicate event_id"):
-                append_event(ledger, changed)
+                append_event(ledger, conflict)
 
     def test_materialize_preserves_pending_then_joined_state(self) -> None:
         capture = build_capture_event(
@@ -341,6 +351,22 @@ class ShadowEvidenceTests(unittest.TestCase):
         complete = materialize_receipt([capture, joined], "receipt.g4.007")
         self.assertEqual("JOINED", complete["join_state"])
         self.assertEqual("PASS", complete["outcome"]["status"])
+
+    def test_pretty_flag_is_accepted_before_or_after_subcommand(self) -> None:
+        before = _parser().parse_args([
+            "--pretty",
+            "materialize",
+            "--receipt-id",
+            "receipt.g4.007",
+        ])
+        after = _parser().parse_args([
+            "materialize",
+            "--receipt-id",
+            "receipt.g4.007",
+            "--pretty",
+        ])
+        self.assertTrue(before.pretty)
+        self.assertTrue(after.pretty)
 
     def test_tampered_shadow_digest_is_rejected_on_read(self) -> None:
         capture = build_capture_event(
