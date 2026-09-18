@@ -457,8 +457,10 @@ That is the point where evidence-based strategy policy evolution becomes justifi
 10. duplicate identical events are idempotent;
 11. conflicting duplicate event IDs are rejected;
 12. joined outcome must bind to the exact captured shadow digest;
-13. projection and observation provenance remain distinct;
-14. no winner or promotion is computed.
+13. orphan outcome joins are rejected;
+14. G3 candidate joins are revalidated against the captured candidate set when materialized;
+15. projection and observation provenance remain distinct;
+16. no winner or promotion is computed.
 
 ---
 
