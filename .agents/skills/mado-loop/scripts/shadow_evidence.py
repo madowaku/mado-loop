@@ -37,7 +37,8 @@ RESULT_STATUSES = ("PASS", "WARN", "UNKNOWN", "FAIL", "SKIPPED")
 EVAL_STATUSES = ("PASS", "WARN", "UNKNOWN", "FAIL")
 PROOF_LEVELS = ("P0", "P1", "P2", "P3", "P4", "P5")
 CANDIDATE_STATES = ("READY", "CONDITIONAL", "BLOCKED")
-OPAQUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+OPAQUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:+-]{0,127}$")
+EVENT_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:+-]{0,159}$")
 DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 DEFAULT_LEDGER = Path(".mado-loop") / "shadow_evidence.jsonl"
 
@@ -74,6 +75,12 @@ def _normalize_time(value: str | None) -> str:
 def _opaque(value: Any, *, label: str) -> str:
     text = str(value or "").strip()
     _expect(OPAQUE_ID_RE.fullmatch(text) is not None, f"{label} must be a short opaque identifier")
+    return text
+
+
+def _event_id(value: Any) -> str:
+    text = str(value or "").strip()
+    _expect(EVENT_ID_RE.fullmatch(text) is not None, "event_id is invalid")
     return text
 
 
@@ -362,7 +369,7 @@ def validate_event(value: Any) -> dict[str, Any]:
     required = {"schema_version", "event_id", "event_type", "receipt_id", "observed_at", "payload"}
     _expect(set(value) == required, "shadow evidence event keys are invalid")
     _expect(value.get("schema_version") == SCHEMA_VERSION, "unsupported shadow evidence schema_version")
-    event_id = _opaque(value.get("event_id"), label="event_id")
+    event_id = _event_id(value.get("event_id"))
     event_type = str(value.get("event_type"))
     _expect(event_type in EVENT_TYPES, "event_type is invalid")
     receipt_id = _opaque(value.get("receipt_id"), label="receipt_id")
