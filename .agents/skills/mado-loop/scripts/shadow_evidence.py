@@ -27,6 +27,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from strategy_resolver import StrategyResolverError  # noqa: E402
+from common import result as result_contract  # noqa: E402
 
 SCHEMA_VERSION = "1.0"
 EVENT_TYPES = ("SHADOW_CAPTURED", "OUTCOME_JOINED")
@@ -259,6 +260,7 @@ def normalize_outcome(value: Any) -> dict[str, Any]:
     source_digest = _digest(dict(value))
 
     if value.get("schema_version") == "1.1" and "tool" in value:
+        _expect(set(value) == set(result_contract.RESULT_KEYS), "result-v1.1 keys are invalid")
         status = str(value.get("status"))
         _expect(status in RESULT_STATUSES, "result-v1.1 status is invalid")
         proof_level = value.get("proof_level")
@@ -272,7 +274,12 @@ def normalize_outcome(value: Any) -> dict[str, Any]:
         unknowns = value.get("unknowns")
         task_domains = value.get("task_domains")
         _expect(isinstance(checks, list), "result-v1.1 checks must be an array")
+        for check in checks:
+            _expect(isinstance(check, Mapping) and set(check) == set(result_contract.CHECK_KEYS), "result-v1.1 check shape is invalid")
+            _expect(str(check.get("status")) in RESULT_STATUSES, "result-v1.1 check status is invalid")
         _expect(isinstance(artifacts, list), "result-v1.1 artifacts must be an array")
+        for artifact in artifacts:
+            _expect(isinstance(artifact, Mapping) and set(artifact) == set(result_contract.ARTIFACT_KEYS), "result-v1.1 artifact shape is invalid")
         _expect(isinstance(errors, list) and isinstance(warnings, list) and isinstance(unknowns, list), "result-v1.1 findings must be arrays")
         _expect(isinstance(task_domains, list), "result-v1.1 task_domains must be an array")
         return {
@@ -299,6 +306,13 @@ def normalize_outcome(value: Any) -> dict[str, Any]:
         }
 
     if value.get("schema_version") == "0.1" and "case_id" in value and "proof_status" in value:
+        required_eval_keys = {
+            "schema_version", "run_id", "case_id", "case_digest", "candidate",
+            "status", "proof_status", "proof", "acceptance", "regressions",
+            "metrics", "failure_signatures", "evidence",
+        }
+        _expect(required_eval_keys.issubset(set(value)), "eval-result-v0.1 missing required keys")
+        _expect(set(value).issubset(required_eval_keys | {"environment"}), "eval-result-v0.1 has unknown keys")
         status = str(value.get("status"))
         _expect(status in EVAL_STATUSES, "eval-result-v0.1 status is invalid")
         proof_status = str(value.get("proof_status"))
@@ -372,6 +386,32 @@ def validate_event(value: Any) -> dict[str, Any]:
         _expect(event_id == f"outcome:{receipt_id}", "outcome event_id must be deterministic")
         required_payload = {"shadow_digest", "execution", "outcome"}
         _expect(set(payload) == required_payload, "outcome payload keys are invalid")
+        _digest_value(payload.get("shadow_digest"), label="outcome shadow_digest")
+        execution = payload.get("execution")
+        outcome = payload.get("outcome")
+        _expect(isinstance(execution, Mapping), "outcome execution must be an object")
+        _expect(set(execution) == {"route_kind", "strategy", "source_ref", "candidate_id"}, "outcome execution keys are invalid")
+        _expect(execution.get("route_kind") in ROUTE_KINDS, "outcome execution route_kind is invalid")
+        _opaque(execution.get("strategy"), label="outcome execution strategy")
+        _opaque(execution.get("source_ref"), label="outcome execution source_ref")
+        if execution.get("candidate_id") is not None:
+            _opaque(execution.get("candidate_id"), label="outcome execution candidate_id")
+        _expect(isinstance(outcome, Mapping), "joined outcome must be an object")
+        expected_outcome_keys = {
+            "source_kind", "source_digest", "status", "proof_level", "proof_status",
+            "task_domains", "status_counts", "metrics", "counts", "source_ref",
+        }
+        _expect(set(outcome) == expected_outcome_keys, "joined outcome keys are invalid")
+        _expect(outcome.get("source_kind") in {"result-v1.1", "eval-result-v0.1"}, "joined outcome source_kind is invalid")
+        _digest_value(outcome.get("source_digest"), label="joined outcome source_digest")
+        _opaque(outcome.get("source_ref"), label="joined outcome source_ref")
+        _expect(str(outcome.get("status")) in RESULT_STATUSES, "joined outcome status is invalid")
+        proof_level = outcome.get("proof_level")
+        _expect(proof_level is None or proof_level in PROOF_LEVELS, "joined outcome proof_level is invalid")
+        _expect(isinstance(outcome.get("task_domains"), list), "joined outcome task_domains must be an array")
+        _expect(isinstance(outcome.get("status_counts"), Mapping), "joined outcome status_counts must be an object")
+        _expect(isinstance(outcome.get("metrics"), Mapping), "joined outcome metrics must be an object")
+        _expect(isinstance(outcome.get("counts"), Mapping), "joined outcome counts must be an object")
 
     return {
         "schema_version": SCHEMA_VERSION,
