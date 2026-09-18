@@ -105,7 +105,7 @@ Later binds one observed execution and one real result to that exact shadow dige
 
 The ledger is semantically append-only.
 
-The implementation writes atomically and preserves prior events. Repeating the exact same deterministic event is idempotent. Reusing an event ID with different contents is rejected.
+The implementation writes atomically and preserves prior events. Repeating the same deterministic event with the same semantic payload is idempotent, even if the retry occurs at a later timestamp. The first observation time is preserved. Reusing an event ID with different semantic contents is rejected.
 
 Each receipt has deterministic event IDs:
 
