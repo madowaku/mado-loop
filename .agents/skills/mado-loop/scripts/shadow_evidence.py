@@ -365,6 +365,67 @@ def normalize_outcome(value: Any) -> dict[str, Any]:
     raise ShadowEvidenceError("unsupported outcome contract; expected result-v1.1 or eval-result-v0.1")
 
 
+def _validate_capture_payload(payload: Mapping[str, Any]) -> None:
+    context = payload.get("context")
+    legacy = payload.get("legacy")
+    candidates = payload.get("g3_candidates")
+    comparison = payload.get("comparison")
+
+    _expect(isinstance(context, Mapping), "capture context must be an object")
+    _expect(
+        set(context) == {"intent_id", "intent_digest", "authority_digest", "snapshot_state_digest", "registry_digest"},
+        "capture context keys are invalid",
+    )
+    _opaque(context.get("intent_id"), label="capture intent_id")
+    for key in ("intent_digest", "authority_digest", "snapshot_state_digest", "registry_digest"):
+        _digest_value(context.get(key), label=f"capture {key}")
+
+    _expect(isinstance(legacy, Mapping), "capture legacy must be an object")
+    _expect(set(legacy) == {"source", "strategy", "domains", "roles", "review", "source_ref"}, "capture legacy keys are invalid")
+    _expect(legacy.get("source") in {"projection", "observed"}, "capture legacy source is invalid")
+    _opaque(legacy.get("strategy"), label="capture legacy strategy")
+    _string_list(legacy.get("domains"), label="capture legacy domains")
+    _string_list(legacy.get("roles"), label="capture legacy roles")
+    _expect(isinstance(legacy.get("review"), bool), "capture legacy review is invalid")
+    _opaque(legacy.get("source_ref"), label="capture legacy source_ref")
+
+    _expect(isinstance(candidates, list), "capture g3_candidates must be an array")
+    candidate_ids: set[str] = set()
+    for index, candidate in enumerate(candidates):
+        label = f"capture g3_candidates[{index}]"
+        _expect(isinstance(candidate, Mapping), f"{label} must be an object")
+        _expect(
+            set(candidate) == {
+                "id", "strategy", "state", "coordination", "proof_target",
+                "required_features", "capability_ids", "reasons",
+            },
+            f"{label} keys are invalid",
+        )
+        candidate_id = _opaque(candidate.get("id"), label=f"{label}.id")
+        _expect(candidate_id not in candidate_ids, "capture candidate ids must be unique")
+        candidate_ids.add(candidate_id)
+        _opaque(candidate.get("strategy"), label=f"{label}.strategy")
+        _expect(candidate.get("state") in CANDIDATE_STATES, f"{label}.state is invalid")
+        _expect(candidate.get("coordination") in {"single", "single+delegate", "multi"}, f"{label}.coordination is invalid")
+        _expect(candidate.get("proof_target") in PROOF_LEVELS, f"{label}.proof_target is invalid")
+        _string_list(candidate.get("required_features"), label=f"{label}.required_features")
+        _string_list(candidate.get("capability_ids"), label=f"{label}.capability_ids")
+        _string_list(candidate.get("reasons"), label=f"{label}.reasons")
+
+    _expect(isinstance(comparison, Mapping), "capture comparison must be an object")
+    comparison_keys = {
+        "domain_exact_match", "intent_domains", "legacy_domains",
+        "ready_strategies", "conditional_strategies", "blocked_strategies",
+        "legacy_role_count", "observations",
+    }
+    _expect(set(comparison) == comparison_keys, "capture comparison keys are invalid")
+    _expect(isinstance(comparison.get("domain_exact_match"), bool), "capture domain_exact_match is invalid")
+    for key in ("intent_domains", "legacy_domains", "ready_strategies", "conditional_strategies", "blocked_strategies", "observations"):
+        _string_list(comparison.get(key), label=f"capture comparison {key}")
+    role_count = comparison.get("legacy_role_count")
+    _expect(type(role_count) is int and role_count >= 0, "capture legacy_role_count is invalid")
+
+
 def validate_event(value: Any) -> dict[str, Any]:
     _expect(isinstance(value, Mapping), "shadow evidence event must be an object")
     required = {"schema_version", "event_id", "event_type", "receipt_id", "observed_at", "payload"}
@@ -382,6 +443,7 @@ def validate_event(value: Any) -> dict[str, Any]:
         _expect(event_id == f"capture:{receipt_id}", "capture event_id must be deterministic")
         required_payload = {"context", "legacy", "g3_candidates", "comparison", "shadow_digest"}
         _expect(set(payload) == required_payload, "capture payload keys are invalid")
+        _validate_capture_payload(payload)
         shadow_without_digest = {
             "context": payload["context"],
             "legacy": payload["legacy"],
@@ -402,8 +464,12 @@ def validate_event(value: Any) -> dict[str, Any]:
         _expect(execution.get("route_kind") in ROUTE_KINDS, "outcome execution route_kind is invalid")
         _opaque(execution.get("strategy"), label="outcome execution strategy")
         _opaque(execution.get("source_ref"), label="outcome execution source_ref")
-        if execution.get("candidate_id") is not None:
-            _opaque(execution.get("candidate_id"), label="outcome execution candidate_id")
+        candidate_id = execution.get("candidate_id")
+        if execution.get("route_kind") == "legacy":
+            _expect(candidate_id is None, "legacy joined outcome must not name a G3 candidate")
+        else:
+            _expect(candidate_id is not None, "g3_candidate joined outcome requires candidate_id")
+            _opaque(candidate_id, label="outcome execution candidate_id")
         _expect(isinstance(outcome, Mapping), "joined outcome must be an object")
         expected_outcome_keys = {
             "source_kind", "source_digest", "status", "proof_level", "proof_status",
