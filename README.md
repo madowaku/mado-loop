@@ -1,5 +1,9 @@
 # MADO LOOP 1.0
 
+**MADO LOOP is an evidence-driven Codex development runtime for Godot.**
+It turns AI-assisted game development into a verifiable loop: build, integrate, run, observe, repair, and prove.
+Its architecture separates intelligence, capability, authority, and evidence so new models, tools, and agent strategies can evolve without weakening safety or proof.
+
 MADO LOOP は、Godot 4.x のゲーム開発を「作った」で終わらせず、実装、統合、実行、観察、修正、証明まで一続きにする Codex Skill です。依頼を決定的に分類し、必要な専門知識とエンジン／アセットツールだけを選び、P0–P5 の証拠に基づいて結果を報告します。
 
 MADO LOOP は自動では起動しません。Codex で明示的に `$mado-loop` を呼び出したときだけ使われます。
@@ -261,4 +265,6 @@ provider/swarm unit testsはfake callerでselection、privacy、parallel fan-out
 
 ## Licensing
 
-vendored third-party codeのnoticeと完全なlicense textは保持されています。詳細は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) と各vendor directoryを参照してください。
+MADO LOOP本体は [Apache License 2.0](LICENSE) で提供します。release ZIPにも同じlicense textを同梱します。
+
+vendored third-party codeは各upstreamのライセンス条件を維持します。noticeと完全なlicense textの所在は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) と各vendor directoryを参照してください。
